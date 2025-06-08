@@ -1,0 +1,16 @@
+*.o
+
+phantom
+
+*.swp
+*~
+
+.DS_Store
+
+build/
+bin/
+
+*.log
+
+entitlements-converted.plist
+
