@@ -1,7 +1,9 @@
-#include "mach_vm_helper.h"
+#include "shell.h"
+#include <stdio.h>
+#include <stdlib.h>
 
-int main() {
-  return_tp(1);
+int main(void){
+  shell_loop();
   return 0;
 }
 

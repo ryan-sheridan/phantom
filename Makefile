@@ -9,7 +9,7 @@ PLIST    = Info.plist
 SECTION  = -sectcreate __TEXT __info_plist $(PLIST)
 
 # Sources and target
-SRCS     = main.c src/mach_vm_helper.c
+SRCS     = main.c src/mach_vm_helper.c src/shell.c
 OBJS     = $(SRCS:.c=.o)
 TARGET   = phantom
 
