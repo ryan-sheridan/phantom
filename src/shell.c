@@ -1,7 +1,10 @@
 #include "shell.h"
+#include "debugger.h"
+#include <ctype.h>
 #include <stdio.h>  // for printf, getline
 #include <stdlib.h> // for exit, atoi
 #include <string.h> // for strcmp, strtok
+#include <unistd.h>
 
 // built in command to exit the shell. if you type exit N
 // it should close the shell and return N to operating system
@@ -33,6 +36,66 @@ int cmd_help(int argc, char **argv) {
   return 0; // success
 }
 
+int cmd_attach(int argc, char **argv) {
+  if(argc < 2) {
+    printf("Usage: attach <pid_or_name>\n");
+    return 1;
+  }
+
+  // we need to determine if the argument is all digits (pid)
+  char *arg = argv[1];
+  int all_digits = 1;
+  for(size_t i = 0; i < strlen(arg); i++) {
+    if(!isdigit((unsigned char)arg[i])) {
+      all_digits = 0;
+      break;
+    }
+  }
+
+  pid_t pid = 0;
+  if(all_digits) {
+    pid = (pid_t)atoi(arg);
+  } else {
+    // we should not be able to attach to self
+    if(strcmp(arg, "phantom") == 0) {
+      printf("Cannot attach to self!\n");
+      return 1;
+    }
+
+    // argv[1] is a name, we can use pgrep to find its pid
+    char cmd[256];
+    snprintf(cmd, sizeof(cmd), "/usr/bin/pgrep -n %s", arg);
+
+    // popen runs the command and gives a FILE* to read the output
+    // we expect a single line containing the PID
+    FILE *fp = popen(cmd, "r");
+    if(!fp) {
+      perror("pgrep");
+      return 1;
+    }
+
+    // we need to read the integer from the pipe
+    // if this fails there was probably no process matched
+    if(fscanf(fp, "%d", &pid) != 1) {
+      printf("Process '%s' not found\n", arg);
+      pclose(fp);
+      return 1;
+    }
+    pclose(fp);
+  }
+
+  if(getpid() == pid) {
+    printf("Cannot attach to self!\n");
+    return 1;
+  }
+
+  if(!attach(pid)) {
+    printf("Process attach failed with pid %d\n", pid);
+    return 1;
+  }
+  return 0;
+}
+
 // array of builtin commands, each entry has a
 // - name - word that you type
 // - func - the function to call
@@ -40,6 +103,7 @@ int cmd_help(int argc, char **argv) {
 const builtin_cmd_t builtins[] = {
  { "help", cmd_help, "shows the help page" },
  { "exit", cmd_exit, "exits the program" },
+ { "attach", cmd_attach, "attach to a process by pid or name"},
  { NULL, NULL, NULL } // end marker
 };
 
