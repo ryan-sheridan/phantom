@@ -1,10 +1,5 @@
 #include "shell.h"
 #include "debugger.h"
-#include <ctype.h>
-#include <stdio.h>  // for printf, getline
-#include <stdlib.h> // for exit, atoi
-#include <string.h> // for strcmp, strtok
-#include <unistd.h>
 
 // built in command to exit the shell. if you type exit N
 // it should close the shell and return N to operating system
@@ -93,6 +88,37 @@ int cmd_attach(int argc, char **argv) {
     printf("Process attach failed with pid %d\n", pid);
     return 1;
   }
+
+  attached_pid = pid;
+  return 0;
+}
+
+int cmd_resume(int argc, char **argv) {
+  if(!attached_pid) {
+    printf("You have to attach to a process first!\n");
+    return 1;
+  }
+
+  return 0;
+}
+
+int cmd_stop(int argc, char **argv) {
+  if(!attached_pid) {
+    printf("You have to attach to a process first!\n");
+    return 1;
+  }
+
+  return 0;
+}
+
+int cmd_detach(int argc, char **argv) {
+  if(!attached_pid) {
+    printf("You have to attach to a process first!\n");
+    return 1;
+  }
+
+  attached_pid = 0;
+
   return 0;
 }
 
@@ -103,7 +129,10 @@ int cmd_attach(int argc, char **argv) {
 const builtin_cmd_t builtins[] = {
  { "help", cmd_help, "shows the help page" },
  { "exit", cmd_exit, "exits the program" },
- { "attach", cmd_attach, "attach to a process by pid or name"},
+ { "attach", cmd_attach, "attach to a process by pid or name" },
+ { "resume", cmd_resume, "resume attached process execution" },
+ { "stop", cmd_stop, "pause attached process execution" },
+ { "detach", cmd_detach, "detach from attached process" },
  { NULL, NULL, NULL } // end marker
 };
 

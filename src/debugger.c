@@ -24,3 +24,11 @@ int attach(pid_t pid) {
 
   return pid;
 }
+
+int resume(pid_t pid) {
+  return 0;
+}
+
+int stop(pid_t pid) {
+  return 0;
+}

@@ -8,6 +8,12 @@
 #ifndef SHELL_H
 #define SHELL_H
 
+#include <ctype.h>
+#include <stdio.h>  // for printf, getline
+#include <stdlib.h> // for exit, atoi
+#include <string.h> // for strcmp, strtok
+#include <unistd.h>
+
 // builtin_f
 // a function pointer tupe for built in commands, every build in
 // command function must match this shape:
@@ -39,5 +45,7 @@ extern const builtin_cmd_t builtins[];
 // the loop which is called at the start of the main function
 // once this returns, the program exits
 void shell_loop(void);
+
+static pid_t attached_pid = 0;
 
 #endif

@@ -8,5 +8,7 @@
 #include <string.h>
 
 int attach(pid_t pid);
+int stop(pid_t pid);
+int resume(pid_t pid);
 
 #endif
