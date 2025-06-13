@@ -46,6 +46,4 @@ extern const builtin_cmd_t builtins[];
 // once this returns, the program exits
 void shell_loop(void);
 
-static pid_t attached_pid = 0;
-
 #endif

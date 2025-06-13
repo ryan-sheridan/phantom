@@ -7,8 +7,11 @@
 #include <signal.h>
 #include <string.h>
 
+static pid_t attached_pid = 0;
+
 int attach(pid_t pid);
-int stop(pid_t pid);
-int resume(pid_t pid);
+int stop(void);
+int resume(void);
+int detach(void);
 
 #endif
