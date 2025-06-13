@@ -8,7 +8,19 @@ int attach(pid_t pid) {
   }
 
   // we need to wait until the process stops
-  waitpid(pid, NULL, 0);
+  int status;
+  waitpid(pid, &status, 0);
   printf("Attached to process %d\n", pid);
+
+  if(WIFSTOPPED(status)) {
+    int sig = WSTOPSIG(status);
+    printf("Process %d stopped on signal %s\n", pid, strsignal(sig));
+  }
+
+  if(WIFEXITED(status)) {
+    printf("Process %d exited with code %d\n",
+        pid, WEXITSTATUS(status));
+  }
+
   return pid;
 }
