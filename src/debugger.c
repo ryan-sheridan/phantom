@@ -10,5 +10,5 @@ int attach(pid_t pid) {
   // we need to wait until the process stops
   waitpid(pid, NULL, 0);
   printf("Attached to process %d\n", pid);
-  return 0;
+  return pid;
 }

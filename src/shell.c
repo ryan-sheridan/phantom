@@ -89,7 +89,7 @@ int cmd_attach(int argc, char **argv) {
     return 1;
   }
 
-  if(!attach(pid)) {
+  if(!attach(pid) == pid) {
     printf("Process attach failed with pid %d\n", pid);
     return 1;
   }

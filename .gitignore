@@ -1,6 +1,7 @@
 *.o
 
 phantom
+test_proc/test_proc
 
 *.swp
 *~
