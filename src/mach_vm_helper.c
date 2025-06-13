@@ -1,27 +1,59 @@
 #include "mach_vm_helper.h"
 
+// global exception port we will allocate
+static mach_port_t exc_port = MACH_PORT_NULL;
+
+// arrays to store previous port settings
+mach_port_t old_ports[EXC_TYPES_COUNT];
+exception_mask_t old_masks[EXC_TYPES_COUNT];
+exception_behavior_t old_behaviors[EXC_TYPES_COUNT];
+thread_state_flavor_t old_flavors[EXC_TYPES_COUNT];
+mach_msg_type_number_t exc_count;
+
+task_t target_task;
+
 kern_return_t get_task_port(pid_t pid, task_t *task_out) {
     kern_return_t kr = task_for_pid(mach_task_self(), pid, task_out);
     if (kr != KERN_SUCCESS) {
         fprintf(stderr,
-                "task_for_pid(%d) failed: %s (0x%x)\n",
+                "[-] task_for_pid(%d) failed: %s (0x%x)\n",
                 pid,
                 mach_error_string(kr),
                 kr);
     } else {
-        printf("Got task port 0x%x for PID %d\n", *task_out, pid);
+        printf("[+] Got task port 0x%x for PID %d\n", *task_out, pid);
     }
     return kr;
 }
 
-static task_t target_task;
-static mach_port_t exc_port;
-
 kern_return_t setup_exception_port(pid_t pid) {
     // grab task port for pid
-    task_t target_task;
     kern_return_t kr = get_task_port(pid, &target_task);
     if (kr != KERN_SUCCESS) {
+        return kr;
+    }
+
+    exception_mask_t mask = EXC_MASK_BAD_ACCESS
+                          | EXC_MASK_BREAKPOINT
+                          | EXC_MASK_BAD_INSTRUCTION
+                          | EXC_MASK_ARITHMETIC
+                          | EXC_MASK_SOFTWARE
+                          | EXC_MASK_SYSCALL;
+
+    // capture old exception ports
+    exc_count = EXC_TYPES_COUNT;
+    kr = task_get_exception_ports(
+        target_task,
+        mask,
+        &old_masks[0],
+        old_ports,
+        &exc_count,
+        &old_behaviors[0],
+        &old_flavors[0]
+    );
+    if(kr != KERN_SUCCESS) {
+        fprintf(stderr, "[-] task_get_exception_ports failed: %s (0x%x)\n",
+                mach_error_string(kr), kr);
         return kr;
     }
 
@@ -39,12 +71,6 @@ kern_return_t setup_exception_port(pid_t pid) {
     if(kr != KERN_SUCCESS) return kr;
 
     // register for all exceptions
-    exception_mask_t mask = EXC_MASK_BAD_ACCESS
-                          | EXC_MASK_BREAKPOINT
-                          | EXC_MASK_BAD_INSTRUCTION
-                          | EXC_MASK_ARITHMETIC
-                          | EXC_MASK_SOFTWARE
-                          | EXC_MASK_SYSCALL;
     kr = task_set_exception_ports(target_task,
                                   mask,
                                   exc_port,
@@ -52,4 +78,8 @@ kern_return_t setup_exception_port(pid_t pid) {
                                   THREAD_STATE_NONE);
 
     return kr;
+}
+
+kern_return_t mach_resume() {
+  return task_resume(target_task);
 }

@@ -99,6 +99,8 @@ int cmd_resume(int argc, char **argv) {
     return 1;
   }
 
+  resume();
+
   return 0;
 }
 

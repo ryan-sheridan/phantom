@@ -11,41 +11,44 @@ int attach(pid_t pid) {
   // we need to wait until the process stops
   int status;
   waitpid(pid, &status, 0);
-  printf("Attached to process %d\n", pid);
+  printf("[+] Attached to process %d\n", pid);
 
   if(WIFSTOPPED(status)) {
     int sig = WSTOPSIG(status);
-    printf("Process %d stopped on signal %s\n", pid, strsignal(sig));
+    printf("[+] Process %d stopped on signal %s\n", pid, strsignal(sig));
   }
 
   if(WIFEXITED(status)) {
-    printf("Process %d exited with code %d\n",
+    printf("[+] Process %d exited with code %d\n",
         pid, WEXITSTATUS(status));
   }
 
   kern_return_t kr = setup_exception_port(pid);
   if (kr != KERN_SUCCESS) {
       fprintf(stderr,
-              "setup_exception_port failed: %s (0x%x)\n",
+              "[-] setup_exception_port failed: %s (0x%x)\n",
               mach_error_string(kr),
               kr);
       return 1;
   }
-  printf("Exception port setup configured successfully for: %d\n", pid);
+  printf("[+] Exception port setup configured successfully for: %d\n", pid);
 
   return pid;
 }
 
 int resume(void) {
-  if (ptrace(PT_CONTINUE, attached_pid, (caddr_t)1, 0) < 0) {
-      perror("ptrace(PT_CONTINUE)");
-      return -1;
+  kern_return_t kr = mach_resume();
+  if(kr != KERN_SUCCESS) {
+    fprintf(stderr,
+              "[-] task_resume failed: %s (0x%x)\n",
+              mach_error_string(kr),
+              kr);
   }
+  printf("[+] task resumed successfully\n");
   return 0;
 }
 
 int stop(void) {
-
   return 0;
 }
 
