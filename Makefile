@@ -2,14 +2,22 @@
 
 # Compiler and flags
 CC       = gcc
-CFLAGS   = -Iinclude -Wall -Wextra -O2
+CFLAGS   = -Iinclude -Wall -Wextra -O2 -pthread
 
 # Info.plist and section flags
 PLIST    = Info.plist
 SECTFLAG = -Wl,-sectcreate,__TEXT,__info_plist,$(PLIST)
 
 # Sources and targets
-SRCS     = main.c src/mach_vm_helper.c src/shell.c src/debugger.c
+SRCS     = main.c \
+           src/mach_vm_helper.c \
+           src/shell.c \
+           src/debugger.c \
+           src/exception_listener.c \
+           src/handlers.c \
+           src/mach_excServer.c \
+           src/mach_excUser.c
+
 OBJS     = $(SRCS:.c=.o)
 TARGET   = phantom
 
@@ -18,7 +26,6 @@ TARGET   = phantom
 # Default target: build, embed Info.plist, then codesign
 all: $(TARGET)
 
-# Link and embed, then codesign with entitlements
 $(TARGET): $(OBJS) $(PLIST)
 	@echo "Linking with embedded Info.plist…"
 	$(CC) $(CFLAGS) $(SECTFLAG) $(OBJS) -o $@
@@ -31,14 +38,14 @@ $(TARGET): $(OBJS) $(PLIST)
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Run a test target in parallel
-run: $(TARGET)
-	./test_proc/test_proc & \
-	./$(TARGET)
-
 # Build the test helper
 test:
 	gcc test_proc/test_proc.c -o test_proc/test_proc
+
+# Run phantom against the test helper
+run: test $(TARGET)
+	./test_proc/test_proc & \
+	./$(TARGET)
 
 # Clean up
 clean:
