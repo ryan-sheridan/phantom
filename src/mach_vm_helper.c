@@ -1,7 +1,12 @@
 #include "mach_vm_helper.h"
+#include <mach/kern_return.h>
+#include <pthread.h>
+
+extern void *exception_listener(void *arg);
 
 // global exception port we will allocate
 static mach_port_t exc_port = MACH_PORT_NULL;
+static mach_msg_type_number_t saved_exc_count = 0;
 
 // arrays to store previous port settings
 mach_port_t old_ports[EXC_TYPES_COUNT];
@@ -52,6 +57,7 @@ kern_return_t setup_exception_port(pid_t pid) {
         &old_flavors[0]
     );
     if(kr != KERN_SUCCESS) {
+        saved_exc_count = exc_count;
         fprintf(stderr, "[-] task_get_exception_ports failed: %s (0x%x)\n",
                 mach_error_string(kr), kr);
         return kr;
@@ -77,6 +83,17 @@ kern_return_t setup_exception_port(pid_t pid) {
                                   EXCEPTION_DEFAULT,
                                   THREAD_STATE_NONE);
 
+    if(kr != KERN_SUCCESS) return kr;
+
+    pthread_t thr;
+    int err = pthread_create(&thr, NULL, exception_listener, &exc_port);
+
+    if (err) {
+      fprintf(stderr, "[-] Failed to create exception_listener: %s\n", strerror(err));
+      return err;
+    }
+
+    pthread_detach(thr);
     return kr;
 }
 
@@ -86,19 +103,25 @@ kern_return_t mach_resume() {
 
 kern_return_t mach_detach() {
   kern_return_t kr;
-  for(mach_msg_type_number_t i = 0; i < exc_count; i++) {
+  for(mach_msg_type_number_t i = 0; i < saved_exc_count; i++) {
+    mach_port_t port = old_ports[i];
+    if(port == MACH_PORT_NULL) continue;
+
     kr = task_set_exception_ports(
         target_task,
         old_masks[i],
-        old_ports[i],
+        port,
         old_behaviors[i],
         old_flavors[i]
     );
+
     if (kr != KERN_SUCCESS) {
-        fprintf(stderr, "[-] Error restoring exception port %u: %s\n",
+        fprintf(stderr, "[-] Error restoring exception port [%u]: %s\n",
                 i, mach_error_string(kr));
     }
   }
+
+  saved_exc_count = 0;
 
   // deallocate receive right for the allocated debugger port
   if(exc_port != MACH_PORT_NULL) {

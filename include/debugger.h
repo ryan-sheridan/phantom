@@ -7,7 +7,7 @@
 #include <signal.h>
 #include <string.h>
 
-static pid_t attached_pid = 0;
+extern pid_t attached_pid;
 
 int attach(pid_t pid);
 int stop(void);

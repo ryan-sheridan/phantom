@@ -26,6 +26,12 @@ void *exception_listener(void *arg) {
             MACH_MSG_TIMEOUT_NONE,
             MACH_PORT_NULL
         );
+        if(kr == MACH_RCV_INVALID_NAME ||
+           kr == MACH_RCV_PORT_CHANGED) {
+          fprintf(stderr, "\n[-] exception_listener: receive port destroyed (%s)\n",
+                    mach_error_string(kr));
+          break;
+        }
         if (kr != KERN_SUCCESS) {
             fprintf(stderr, "[-] mach_msg receive failed: %s\n",
                     mach_error_string(kr));

@@ -1,6 +1,8 @@
 #include "debugger.h"
 #include "mach_vm_helper.h"
 
+pid_t attached_pid = 0;
+
 int attach(pid_t pid) {
   // attach to process with ptrace
   if(ptrace(PT_ATTACH, pid, (caddr_t)0, 0) == -1) {
@@ -33,6 +35,11 @@ int attach(pid_t pid) {
   }
   printf("[+] Exception port setup configured successfully for: %d\n", pid);
 
+  if (ptrace(PT_CONTINUE, pid, (caddr_t)1, 0) == -1) {
+    perror("ptrace continue");
+    return 1;
+  }
+
   return pid;
 }
 
@@ -59,8 +66,16 @@ int detach(void) {
               "[-] mach_detach failed: %s (0x%x)\n",
               mach_error_string(kr),
               kr);
+  } else {
+    printf("[+] mach exception port torn down\n");
   }
-  printf("[+] task detached successfully\n");
+
+  // then we detach ptrace
+  if(ptrace(PT_DETACH, attached_pid, (caddr_t)0, 0) == -1) {
+    perror("ptrace detach");
+  }
+
+  printf("[+] ptrace detached from %d\n", attached_pid);
   return 0;
 
 }
