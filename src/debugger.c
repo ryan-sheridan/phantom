@@ -1,5 +1,6 @@
 #include "debugger.h"
 #include "mach_vm_helper.h"
+#include <mach/kern_return.h>
 
 pid_t attached_pid = 0;
 
@@ -60,11 +61,12 @@ int resume(void) {
 }
 
 int interrupt(void) {
-  if(ptrace(PT_CONTINUE, attached_pid, (caddr_t)1, SIGSTOP) == -1) {
-    perror("ptrace interrupt");
+  kern_return_t kr = mach_interrupt();
+  if(kr != KERN_SUCCESS) {
+    fprintf(stderr, "[-] task_suspend failed: %s (0x%x)\n",
+          mach_error_string(kr), kr);
     return 1;
   }
-  printf("[+] Process %d interrupted\n", attached_pid);
   return 0;
 }
 

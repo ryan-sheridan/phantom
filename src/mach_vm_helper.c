@@ -135,3 +135,15 @@ kern_return_t mach_detach() {
   }
   return KERN_SUCCESS;
 }
+
+kern_return_t mach_interrupt() {
+  kern_return_t kr = task_suspend(target_task);
+  if(kr != KERN_SUCCESS) {
+    fprintf(stderr, "[-] task_suspend failed: %s (0x%x)\n",
+        mach_error_string(kr), kr);
+    return 1;
+  }
+  printf("[+] Task [%d] interrupted (mach suspend)\n", target_task);
+
+  return kr;
+}
