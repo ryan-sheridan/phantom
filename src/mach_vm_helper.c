@@ -83,3 +83,31 @@ kern_return_t setup_exception_port(pid_t pid) {
 kern_return_t mach_resume() {
   return task_resume(target_task);
 }
+
+kern_return_t mach_detach() {
+  kern_return_t kr;
+  for(mach_msg_type_number_t i = 0; i < exc_count; i++) {
+    kr = task_set_exception_ports(
+        target_task,
+        old_masks[i],
+        old_ports[i],
+        old_behaviors[i],
+        old_flavors[i]
+    );
+    if (kr != KERN_SUCCESS) {
+        fprintf(stderr, "[-] Error restoring exception port %u: %s\n",
+                i, mach_error_string(kr));
+    }
+  }
+
+  // deallocate receive right for the allocated debugger port
+  if(exc_port != MACH_PORT_NULL) {
+    kr = mach_port_destroy(mach_task_self(), exc_port);
+    if (kr != KERN_SUCCESS) {
+          fprintf(stderr, "[-] Error destroying debugger port: %s\n",
+                  mach_error_string(kr));
+      }
+      exc_port = MACH_PORT_NULL;
+  }
+  return KERN_SUCCESS;
+}

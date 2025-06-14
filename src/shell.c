@@ -119,6 +119,8 @@ int cmd_detach(int argc, char **argv) {
     return 1;
   }
 
+  detach();
+
   attached_pid = 0;
 
   return 0;

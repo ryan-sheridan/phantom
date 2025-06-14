@@ -53,5 +53,14 @@ int stop(void) {
 }
 
 int detach(void) {
+  kern_return_t kr = mach_detach();
+  if(kr != KERN_SUCCESS) {
+    fprintf(stderr,
+              "[-] mach_detach failed: %s (0x%x)\n",
+              mach_error_string(kr),
+              kr);
+  }
+  printf("[+] task detached successfully\n");
   return 0;
+
 }
