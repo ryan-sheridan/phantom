@@ -104,11 +104,13 @@ int cmd_resume(int argc, char **argv) {
   return 0;
 }
 
-int cmd_stop(int argc, char **argv) {
+int cmd_interrupt(int argc, char **argv) {
   if(!attached_pid) {
     printf("You have to attach to a process first!\n");
     return 1;
   }
+
+  interrupt();
 
   return 0;
 }
@@ -132,11 +134,11 @@ int cmd_detach(int argc, char **argv) {
 // - help - a short desc of the function
 const builtin_cmd_t builtins[] = {
  { "help", cmd_help, "shows the help page" },
- { "exit", cmd_exit, "exits the program" },
  { "attach", cmd_attach, "attach to a process by pid or name" },
  { "resume", cmd_resume, "resume attached process execution" },
- { "stop", cmd_stop, "pause attached process execution" },
+ { "interrupt", cmd_interrupt, "pause attached process execution" },
  { "detach", cmd_detach, "detach from attached process" },
+ { "q", cmd_exit, "exits the program" },
  { NULL, NULL, NULL } // end marker
 };
 

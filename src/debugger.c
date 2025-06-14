@@ -35,10 +35,8 @@ int attach(pid_t pid) {
   }
   printf("[+] Exception port setup configured successfully for: %d\n", pid);
 
-  if (ptrace(PT_CONTINUE, pid, (caddr_t)1, 0) == -1) {
-    perror("ptrace continue");
-    return 1;
-  }
+
+  attached_pid = pid;
 
   return pid;
 }
@@ -51,11 +49,22 @@ int resume(void) {
               mach_error_string(kr),
               kr);
   }
+
+  if (ptrace(PT_CONTINUE, attached_pid, (caddr_t)1, SIGCONT) == -1) {
+    perror("ptrace continue");
+    return 1;
+  }
+
   printf("[+] task resumed successfully\n");
   return 0;
 }
 
-int stop(void) {
+int interrupt(void) {
+  if(ptrace(PT_CONTINUE, attached_pid, (caddr_t)1, SIGSTOP) == -1) {
+    perror("ptrace interrupt");
+    return 1;
+  }
+  printf("[+] Process %d interrupted\n", attached_pid);
   return 0;
 }
 

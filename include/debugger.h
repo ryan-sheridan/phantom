@@ -10,7 +10,7 @@
 extern pid_t attached_pid;
 
 int attach(pid_t pid);
-int stop(void);
+int interrupt(void);
 int resume(void);
 int detach(void);
 

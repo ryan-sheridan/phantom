@@ -97,6 +97,7 @@ kern_return_t setup_exception_port(pid_t pid) {
     return kr;
 }
 
+// think about this, think about it hard
 kern_return_t mach_resume() {
   return task_resume(target_task);
 }
