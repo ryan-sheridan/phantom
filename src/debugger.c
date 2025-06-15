@@ -59,7 +59,7 @@ int detach(void) {
 }
 
 int print_registers(void) {
-  kern_return_t kr = mach_registers();
+  kern_return_t kr = mach_register_read();
   if(kr != KERN_SUCCESS) {
     fprintf(stderr,
               "[-] mach_registers failed: %s (0x%x)\n",

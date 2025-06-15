@@ -2,6 +2,7 @@
 #include <mach/kern_return.h>
 #include <pthread.h>
 #include <inttypes.h>
+#include <stdlib.h>
 
 extern void *exception_listener(void *arg);
 
@@ -152,7 +153,7 @@ kern_return_t mach_detach() {
   return KERN_SUCCESS;
 }
 
-kern_return_t mach_registers() {
+kern_return_t mach_register_read() {
   thread_act_port_array_t thread_list;
   mach_msg_type_number_t thread_count;
   kern_return_t kr;
@@ -200,4 +201,75 @@ kern_return_t mach_registers() {
   vm_deallocate(mach_task_self(),
                 (vm_address_t)thread_list,
                 thread_count * sizeof(thread_t));
+}
+
+kern_return_t mach_register_write(const char reg[], uint64_t value) {
+  thread_act_port_array_t thread_list;
+  mach_msg_type_number_t thread_count;
+  kern_return_t kr;
+
+  // 1. get threads in task
+  kr = task_threads(target_task, &thread_list, &thread_count);
+  if (kr != KERN_SUCCESS) {
+      fprintf(stderr, "task_threads failed: %s\n", mach_error_string(kr));
+      return kr;
+  }
+
+  // 2. fetch the 64-bit register state of the first thread
+  arm_thread_state64_t state64;
+  mach_msg_type_number_t count64 = ARM_THREAD_STATE64_COUNT;
+  kr = thread_get_state(thread_list[0],
+                        ARM_THREAD_STATE64,
+                        (thread_state_t)&state64,
+                        &count64);
+  if (kr != KERN_SUCCESS) {
+      fprintf(stderr, "thread_get_state failed: %s\n", mach_error_string(kr));
+      vm_deallocate(mach_task_self(),
+                    (vm_address_t)thread_list,
+                    thread_count * sizeof(thread_t));
+      return kr;
+  }
+
+  // 3. Update the requested register
+  if (strncmp(reg, "X", 1) == 0) {
+      // X0..X28 or X29/X30
+      int idx = atoi(reg + 1);
+      if (idx >= 0 && idx <= 28) {
+          state64.__x[idx] = value;
+      } else if (idx == 29) {
+          state64.__fp = value;
+      } else if (idx == 30) {
+          state64.__lr = value;
+      } else {
+          fprintf(stderr, "[!] Invalid X-register: %s\n", reg);
+      }
+
+  } else if (strcmp(reg, "FP") == 0) {
+      state64.__fp = value;
+  } else if (strcmp(reg, "LR") == 0) {
+      state64.__lr = value;
+  } else if (strcmp(reg, "SP") == 0) {
+      state64.__sp = value;
+  } else if (strcmp(reg, "PC") == 0) {
+      state64.__pc = value;
+  } else {
+      fprintf(stderr, "[!] Invalid register name: %s\n", reg);
+  }
+
+  // 4. write back the modified state
+  kr = thread_set_state(thread_list[0],
+                        ARM_THREAD_STATE64,
+                        (thread_state_t)&state64,
+                        count64);
+  if (kr != KERN_SUCCESS) {
+      fprintf(stderr, "thread_set_state failed: %s\n", mach_error_string(kr));
+  } else {
+      printf("Register %s set to 0x%016" PRIx64 "\n", reg, value);
+  }
+
+  // 5. clean up
+  vm_deallocate(mach_task_self(),
+                (vm_address_t)thread_list,
+                thread_count * sizeof(thread_t));
+  return kr;
 }

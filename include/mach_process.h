@@ -13,6 +13,7 @@ kern_return_t setup_exception_port(pid_t pid);
 kern_return_t mach_resume();
 kern_return_t mach_suspend();
 kern_return_t mach_detach();
-kern_return_t mach_registers();
+kern_return_t mach_register_read();
+kern_return_t mach_register_write(const char reg[], uint64_t value);
 
 #endif
