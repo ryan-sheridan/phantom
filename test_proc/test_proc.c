@@ -1,15 +1,17 @@
 #include <stdio.h>
-#include <unistd.h>    // for sleep()
+#include <unistd.h>
 
 int main(void) {
-    unsigned long counter = 0;
+    printf("PID %d: will crash in 15 seconds…\n", getpid());
+    fflush(stdout);
 
-    while (1) {
-        printf("%lu\n", counter++);
-        fflush(stdout); // ensure it's printed immediately
-        sleep(1);       // pause for 1 second
-    }
+    sleep(15);
 
-    return 0; // never reached
+    // Deliberately crash: write to address 0
+    volatile int *p = NULL;
+    *p = 42;
+
+    // Should never reach here
+    return 0;
 }
 

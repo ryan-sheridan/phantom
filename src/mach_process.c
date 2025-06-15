@@ -1,4 +1,5 @@
 #include "mach_process.h"
+#include <mach/exception_types.h>
 #include <mach/kern_return.h>
 #include <pthread.h>
 #include <inttypes.h>
@@ -52,6 +53,8 @@ kern_return_t setup_exception_port(pid_t pid) {
         return kr;
     }
 
+    mach_port_t task_self = mach_task_self();
+
     // suspend task before setting up exception ports
     mach_suspend();
 
@@ -81,13 +84,13 @@ kern_return_t setup_exception_port(pid_t pid) {
     }
 
     // allocate a recieve right
-    kr = mach_port_allocate(mach_task_self(),
+    kr = mach_port_allocate(task_self,
                             MACH_PORT_RIGHT_RECEIVE,
                             &exc_port);
     if(kr != KERN_SUCCESS) return kr;
 
     // insert a send right so we can reply
-    kr = mach_port_insert_right(mach_task_self(),
+    kr = mach_port_insert_right(task_self,
                                 exc_port,
                                 exc_port,
                                 MACH_MSG_TYPE_MAKE_SEND);
@@ -97,7 +100,7 @@ kern_return_t setup_exception_port(pid_t pid) {
     kr = task_set_exception_ports(target_task,
                                   mask,
                                   exc_port,
-                                  EXCEPTION_DEFAULT,
+                                  EXCEPTION_DEFAULT | MACH_EXCEPTION_CODES,
                                   THREAD_STATE_NONE);
 
     if(kr != KERN_SUCCESS) return kr;

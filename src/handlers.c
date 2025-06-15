@@ -1,4 +1,5 @@
 #include "mach_exc.h"
+#include "mach_process.h"
 #include <mach/mach_error.h>
 #include <stdio.h>
 
@@ -10,8 +11,12 @@ kern_return_t catch_mach_exception_raise(
     mach_exception_data_t code,
     mach_msg_type_number_t codeCnt
 ) {
-    printf("[!] Caught exception %d on thread 0x%x, code=0x%llx\n",
+    printf("\n[!] Caught exception %d on thread 0x%x, code=0x%llx\n",
            exception, thread, code[0]);
+    mach_suspend();
+    printf("phantom> ");
+    fflush(stdout);
+
     return KERN_SUCCESS;
 }
 
@@ -26,6 +31,7 @@ kern_return_t catch_mach_exception_raise_state(
     thread_state_t new_state,
     mach_msg_type_number_t *new_stateCnt
 ) {
+    printf("testing raise state\n");
     return KERN_FAILURE;
 }
 
@@ -42,5 +48,6 @@ kern_return_t catch_mach_exception_raise_state_identity(
     thread_state_t new_state,
     mach_msg_type_number_t *new_stateCnt
 ) {
+    printf("testing raise state identity\n");
     return KERN_FAILURE;
 }
