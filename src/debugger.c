@@ -5,27 +5,6 @@
 pid_t attached_pid = 0;
 
 int attach(pid_t pid) {
-  // attach to process with ptrace
-  if(ptrace(PT_ATTACH, pid, (caddr_t)0, 0) == -1) {
-    perror("ptrace attach");
-    return -1;
-  }
-
-  // we need to wait until the process stops
-  int status;
-  waitpid(pid, &status, 0);
-  printf("[+] Attached to process %d\n", pid);
-
-  if(WIFSTOPPED(status)) {
-    int sig = WSTOPSIG(status);
-    printf("[+] Process %d stopped on signal %s\n", pid, strsignal(sig));
-  }
-
-  if(WIFEXITED(status)) {
-    printf("[+] Process %d exited with code %d\n",
-        pid, WEXITSTATUS(status));
-  }
-
   kern_return_t kr = setup_exception_port(pid);
   if (kr != KERN_SUCCESS) {
       fprintf(stderr,
@@ -38,7 +17,6 @@ int attach(pid_t pid) {
 
 
   attached_pid = pid;
-
   return pid;
 }
 
@@ -51,17 +29,12 @@ int resume(void) {
               kr);
   }
 
-  if (ptrace(PT_CONTINUE, attached_pid, (caddr_t)1, SIGCONT) == -1) {
-    perror("ptrace continue");
-    return 1;
-  }
-
   printf("[+] task resumed successfully\n");
   return 0;
 }
 
 int interrupt(void) {
-  kern_return_t kr = mach_interrupt();
+  kern_return_t kr = mach_suspend();
   if(kr != KERN_SUCCESS) {
     fprintf(stderr, "[-] task_suspend failed: %s (0x%x)\n",
           mach_error_string(kr), kr);
@@ -81,12 +54,6 @@ int detach(void) {
     printf("[+] mach exception port torn down\n");
   }
 
-  // then we detach ptrace
-  if(ptrace(PT_DETACH, attached_pid, (caddr_t)0, 0) == -1) {
-    perror("ptrace detach");
-  }
-
-  printf("[+] ptrace detached from %d\n", attached_pid);
+  printf("[+] detached from %d\n", attached_pid);
   return 0;
-
 }

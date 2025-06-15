@@ -28,20 +28,26 @@ void *exception_listener(void *arg) {
         );
         if(kr == MACH_RCV_INVALID_NAME ||
            kr == MACH_RCV_PORT_CHANGED) {
-          fprintf(stderr, "\n[-] exception_listener: receive port destroyed (%s)\n",
+          fprintf(stderr, "\n[i] exception_listener: receive port destroyed (%s) (detach)\n",
                     mach_error_string(kr));
+          printf("phantom> ");
+          fflush(stdout);
           break;
         }
         if (kr != KERN_SUCCESS) {
-            fprintf(stderr, "[-] mach_msg receive failed: %s\n",
+            fprintf(stderr, "[-] exception_listener: mach_msg receive failed: %s\n",
                     mach_error_string(kr));
+            printf("phantom> ");
+            fflush(stdout);
             continue;
         }
 
         // dispatch to handlers
         boolean_t handled = mach_exc_server(msg, msg);
         if(!handled) {
-          fprintf(stderr, "[-] Exception message not handled\n");
+          fprintf(stderr, "[-] exception_listener: exception message not handled\n");
+          printf("phantom> ");
+          fflush(stdout);
         }
 
   }

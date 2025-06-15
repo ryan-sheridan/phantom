@@ -136,7 +136,7 @@ const builtin_cmd_t builtins[] = {
  { "help", cmd_help, "shows the help page" },
  { "attach", cmd_attach, "attach to a process by pid or name" },
  { "resume", cmd_resume, "resume attached process execution" },
- { "interrupt", cmd_interrupt, "pause attached process execution" },
+ { "suspend", cmd_interrupt, "suspend attached process execution" },
  { "detach", cmd_detach, "detach from attached process" },
  { "q", cmd_exit, "exits the program" },
  { NULL, NULL, NULL } // end marker

@@ -9,8 +9,9 @@
 
 kern_return_t get_task_port(pid_t pid, task_t *task_out);
 kern_return_t setup_exception_port(pid_t pid);
+
 kern_return_t mach_resume();
-kern_return_t mach_interrupt();
+kern_return_t mach_suspend();
 kern_return_t mach_detach();
 
 #endif

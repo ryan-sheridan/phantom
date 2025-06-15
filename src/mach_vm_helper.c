@@ -31,12 +31,27 @@ kern_return_t get_task_port(pid_t pid, task_t *task_out) {
     return kr;
 }
 
+kern_return_t mach_suspend() {
+  kern_return_t kr = task_suspend(target_task);
+  if(kr != KERN_SUCCESS) {
+    fprintf(stderr, "[-] task_suspend failed: %s (0x%x)\n",
+        mach_error_string(kr), kr);
+    return 1;
+  }
+  printf("[+] Task [%d] interrupted (mach suspend)\n", target_task);
+
+  return kr;
+}
+
 kern_return_t setup_exception_port(pid_t pid) {
     // grab task port for pid
     kern_return_t kr = get_task_port(pid, &target_task);
     if (kr != KERN_SUCCESS) {
         return kr;
     }
+
+    // suspend task before setting up exception ports
+    mach_suspend();
 
     exception_mask_t mask = EXC_MASK_BAD_ACCESS
                           | EXC_MASK_BREAKPOINT
@@ -136,14 +151,3 @@ kern_return_t mach_detach() {
   return KERN_SUCCESS;
 }
 
-kern_return_t mach_interrupt() {
-  kern_return_t kr = task_suspend(target_task);
-  if(kr != KERN_SUCCESS) {
-    fprintf(stderr, "[-] task_suspend failed: %s (0x%x)\n",
-        mach_error_string(kr), kr);
-    return 1;
-  }
-  printf("[+] Task [%d] interrupted (mach suspend)\n", target_task);
-
-  return kr;
-}
