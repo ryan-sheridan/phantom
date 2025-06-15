@@ -79,3 +79,7 @@ int write_registers(const char reg[], uint64_t value) {
   }
   return 0;
 }
+
+int set_breakpoint(uint64_t addr) {
+  return 0;
+}
