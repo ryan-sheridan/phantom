@@ -1,6 +1,7 @@
-#include "mach_vm_helper.h"
+#include "mach_process.h"
 #include <mach/kern_return.h>
 #include <pthread.h>
+#include <inttypes.h>
 
 extern void *exception_listener(void *arg);
 
@@ -151,3 +152,52 @@ kern_return_t mach_detach() {
   return KERN_SUCCESS;
 }
 
+kern_return_t mach_registers() {
+  thread_act_port_array_t thread_list;
+  mach_msg_type_number_t thread_count;
+  kern_return_t kr;
+
+  // get threads in task
+  kr = task_threads(target_task, &thread_list, &thread_count);
+  if (kr != KERN_SUCCESS) {
+      fprintf(stderr, "task_threads failed: %s\n", mach_error_string(kr));
+      return kr;
+  }
+
+  // grab the first thread 64-bit state
+  arm_thread_state64_t arm64;
+  mach_msg_type_number_t state_count = ARM_THREAD_STATE64_COUNT;
+
+  kr = thread_get_state(thread_list[0],
+                        ARM_THREAD_STATE64,
+                        (thread_state_t)&arm64,
+                        &state_count);
+  if (kr != KERN_SUCCESS) {
+      fprintf(stderr, "thread_get_state failed: %s\n", mach_error_string(kr));
+      // clean up
+      vm_deallocate(mach_task_self(), (vm_address_t)thread_list,
+                    thread_count * sizeof(thread_t));
+      return kr;
+  }
+
+  // print out general-purpose registers x0–x28
+  printf("\n\033[1mRegister dump (ARM64):\x1b[0m\n\n");
+  for (int i = 0; i <= 28; i++) {
+      printf("    \033[1mX%-2d:\x1b[0m 0x%016" PRIx64 "%s",
+             i, arm64.__x[i],
+             (i % 2 == 1) ? "\n" : "    ");
+  }
+  // FP (x29) and LR (x30)
+  printf("    \033[1mFP:\x1b[0m 0x%016" PRIx64 "    \033[1mLR:\x1b[0m 0x%016" PRIx64 "\n",
+         arm64.__fp, arm64.__lr);
+  // SP, PC, CPSR
+  printf("    \033[1mSP:\x1b[0m 0x%016" PRIx64 "    \033[1mPC:\x1b[0m 0x%016" PRIx64 "\n",
+         arm64.__sp, arm64.__pc);
+  printf("    \033[1mCPSR:\x1b[0m 0x%016" PRIx64 "\n\n",
+         arm64.__cpsr);
+
+  // clean up
+  vm_deallocate(mach_task_self(),
+                (vm_address_t)thread_list,
+                thread_count * sizeof(thread_t));
+}

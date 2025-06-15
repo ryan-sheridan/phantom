@@ -1,5 +1,5 @@
-#ifndef MACH_VM_HELPER_H
-#define MACH_VM_HELPER_H
+#ifndef MACH_PROCESS_H
+#define MACH_PROCESS_H
 
 #include <sys/types.h>
 #include <mach/mach.h>
@@ -13,5 +13,6 @@ kern_return_t setup_exception_port(pid_t pid);
 kern_return_t mach_resume();
 kern_return_t mach_suspend();
 kern_return_t mach_detach();
+kern_return_t mach_registers();
 
 #endif

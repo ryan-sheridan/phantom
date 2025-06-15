@@ -10,7 +10,7 @@ SECTFLAG = -Wl,-sectcreate,__TEXT,__info_plist,$(PLIST)
 
 # Sources and targets
 SRCS     = main.c \
-           src/mach_vm_helper.c \
+           src/mach_process.c \
            src/shell.c \
            src/debugger.c \
            src/exception_listener.c \

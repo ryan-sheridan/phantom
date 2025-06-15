@@ -1,5 +1,5 @@
 #include "debugger.h"
-#include "mach_vm_helper.h"
+#include "mach_process.h"
 #include <mach/kern_return.h>
 
 pid_t attached_pid = 0;
@@ -55,5 +55,16 @@ int detach(void) {
   }
 
   printf("[+] detached from %d\n", attached_pid);
+  return 0;
+}
+
+int print_registers(void) {
+  kern_return_t kr = mach_registers();
+  if(kr != KERN_SUCCESS) {
+    fprintf(stderr,
+              "[-] mach_registers failed: %s (0x%x)\n",
+              mach_error_string(kr),
+              kr);
+  }
   return 0;
 }

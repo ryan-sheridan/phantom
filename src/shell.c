@@ -1,5 +1,6 @@
 #include "shell.h"
 #include "debugger.h"
+#include <string.h>
 
 // built in command to exit the shell. if you type exit N
 // it should close the shell and return N to operating system
@@ -128,6 +129,29 @@ int cmd_detach(int argc, char **argv) {
   return 0;
 }
 
+int cmd_reg(int argc, char **argv) {
+  if(argc < 2) {
+    printf("Usage: reg [read|write]\n");
+    return 1;
+  }
+
+  char *arg = argv[1];
+
+  // determine if a read or write
+  if(strcmp(arg, "read") == 0) {
+    print_registers();
+  } else {
+    printf("write");
+  }
+
+  if(!attached_pid) {
+    printf("You have to attach a process first!\n");
+    return 1;
+  }
+
+  return 0;
+}
+
 // array of builtin commands, each entry has a
 // - name - word that you type
 // - func - the function to call
@@ -138,6 +162,7 @@ const builtin_cmd_t builtins[] = {
  { "resume", cmd_resume, "resume attached process execution" },
  { "suspend", cmd_interrupt, "suspend attached process execution" },
  { "detach", cmd_detach, "detach from attached process" },
+ { "reg", cmd_reg, "read or write to registers syntax: reg [read|write]" },
  { "q", cmd_exit, "exits the program" },
  { NULL, NULL, NULL } // end marker
 };

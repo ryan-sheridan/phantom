@@ -12,5 +12,6 @@ int attach(pid_t pid);
 int interrupt(void);
 int resume(void);
 int detach(void);
+int print_registers(void);
 
 #endif
