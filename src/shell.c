@@ -141,7 +141,15 @@ int cmd_reg(int argc, char **argv) {
   if(strcmp(arg, "read") == 0) {
     print_registers();
   } else {
-    printf("write");
+    if(argc < 4) {
+      printf("Usage: reg write takes exactly 2 arguments: <reg-name> <value>\n");
+      return 1;
+    }
+
+    const char *reg = argv[2];
+    uint64_t value = strtoull(argv[3], NULL, 0);
+
+    write_registers(reg, value);
   }
 
   if(!attached_pid) {
@@ -162,7 +170,7 @@ const builtin_cmd_t builtins[] = {
  { "resume", cmd_resume, "resume attached process execution" },
  { "suspend", cmd_interrupt, "suspend attached process execution" },
  { "detach", cmd_detach, "detach from attached process" },
- { "reg", cmd_reg, "read or write to registers syntax: reg [read|write]" },
+ { "reg", cmd_reg, "read or write to registers \n\t\tsyntax: \n\t\t\treg [read|write]" },
  { "q", cmd_exit, "exits the program" },
  { NULL, NULL, NULL } // end marker
 };

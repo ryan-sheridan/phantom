@@ -62,7 +62,18 @@ int print_registers(void) {
   kern_return_t kr = mach_register_read();
   if(kr != KERN_SUCCESS) {
     fprintf(stderr,
-              "[-] mach_registers failed: %s (0x%x)\n",
+              "[-] mach_register_read failed: %s (0x%x)\n",
+              mach_error_string(kr),
+              kr);
+  }
+  return 0;
+}
+
+int write_registers(const char reg[], uint64_t value) {
+  kern_return_t kr = mach_register_write(reg, value);
+  if(kr != KERN_SUCCESS) {
+    fprintf(stderr,
+              "[-] mach_register_write failed: %s (0x%x)\n",
               mach_error_string(kr),
               kr);
   }

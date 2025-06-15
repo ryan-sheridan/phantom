@@ -13,5 +13,6 @@ int interrupt(void);
 int resume(void);
 int detach(void);
 int print_registers(void);
+int write_registers(const char reg[], uint64_t value);
 
 #endif
