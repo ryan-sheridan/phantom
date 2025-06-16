@@ -16,7 +16,8 @@ SRCS     = main.c \
            src/exception_listener.c \
            src/handlers.c \
            src/mach_excServer.c \
-           src/mach_excUser.c
+           src/mach_excUser.c \
+           src/bp_wp.c
 
 OBJS     = $(SRCS:.c=.o)
 TARGET   = phantom

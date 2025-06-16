@@ -60,14 +60,14 @@ int detach(void) {
 }
 
 int print_registers(void) {
-  kern_return_t kr = mach_register_read();
-  if(kr != KERN_SUCCESS) {
-    fprintf(stderr,
-              "[-] mach_register_read failed: %s (0x%x)\n",
-              mach_error_string(kr),
-              kr);
-  }
-  return 0;
+//  kern_return_t kr = mach_register_read();
+//  if(kr != KERN_SUCCESS) {
+//    fprintf(stderr,
+//              "[-] mach_register_read failed: %s (0x%x)\n",
+//              mach_error_string(kr),
+//              kr);
+//  }
+    return 0;
 }
 
 int write_registers(const char reg[], uint64_t value) {
@@ -82,17 +82,17 @@ int write_registers(const char reg[], uint64_t value) {
 }
 
 int print_debug_registers() {
-  kern_return_t kr = mach_register_debug_read();
-  if(kr != KERN_SUCCESS) {
-    fprintf(stderr,
-              "[-] mach_register_debug_read failed: %s (0x%x)\n",
-              mach_error_string(kr),
-              kr);
-  }
+  //    kern_return_t kr = mach_register_debug_read();
+  //    if(kr != KERN_SUCCESS) {
+  //      fprintf(stderr,
+  //                "[-] mach_register_debug_read failed: %s (0x%x)\n",
+  //                mach_error_string(kr),
+  //                kr);
+  //    }
   return 0;
 }
 
 int set_breakpoint(uint64_t addr) {
-  kern_return_t kr = mach_register_write
+//  kern_return_t kr = mach_register_write
   return 0;
 }

@@ -1,6 +1,8 @@
 #include "shell.h"
+#include "bp_wp.h"
 #include "debugger.h"
 #include <string.h>
+#include <inttypes.h>
 
 // built in command to exit the shell. if you type exit N
 // it should close the shell and return N to operating system
@@ -94,7 +96,7 @@ int cmd_attach(int argc, char **argv) {
   return 0;
 }
 
-int cmd_resume(int argc, char **argv) {
+int cmd_continue(int argc, char **argv) {
   if(!attached_pid) {
     printf("You have to attach to a process first!\n");
     return 1;
@@ -170,27 +172,50 @@ int cmd_reg_dbg(int argc, char **argv) {
 }
 
 int cmd_br(int argc, char **argv) {
-  if(!attached_pid) {
-    printf("You have to attach a process first\n");
-    return 1;
-  }
+  // if(!attached_pid) {
+  //   printf("You have to attach a process first\n");
+  //   return 1;
+  // }
 
-  if(argc < 2) {
-    printf("Usage: br set <address> | br delete <address>\n");
+  if (argc < 2) {
+    printf("Usage: br set <address> | br delete <address> | br list\n");
     return 1;
   }
 
   const char *arg = argv[1];
-  if(argc < 3 && strcmp(arg, "list") == 0) {
+  uint64_t addr;
 
+  if (strcmp(arg, "list") == 0) {
+    if (argc != 2) {
+      printf("Usage: br list\n");
+      return 1;
+    }
+    list_breakpoints();
     return 0;
   }
 
-  uint64_t addr = strtoull(argv[2], NULL, 0);
+  if (strcmp(arg, "set") == 0) {
+    if (argc != 3) {
+      printf("Usage: br set <address>\n");
+      return 1;
+    }
+    addr = strtoull(argv[2], NULL, 0);
+    add_breakpoint(addr);
+    return 0;
+  }
 
-  set_breakpoint(addr);
+  if (strcmp(arg, "delete") == 0) {
+    if (argc != 3) {
+      printf("Usage: br delete <address>\n");
+      return 1;
+    }
+    addr = strtoull(argv[2], NULL, 0);
+    remove_breakpoint_by_addr(addr);
+    return 0;
+  }
 
-  return 0;
+  printf("Usage: br set <address> | br delete <address> | br list\n");
+  return 1;
 }
 
 // array of builtin commands, each entry has a
@@ -200,12 +225,13 @@ int cmd_br(int argc, char **argv) {
 const builtin_cmd_t builtins[] = {
     { "help",    cmd_help,       "shows the help page" },
     { "attach",  cmd_attach,     "attach to a process by pid or name" },
-    { "resume",  cmd_resume,     "resume attached process execution" },
+    { "c",  cmd_continue,     "continuneattached process execution" },
     { "suspend", cmd_interrupt,  "suspend attached process execution" },
     { "detach",  cmd_detach,     "detach from attached process" },
     { "reg",     cmd_reg,        "read or write to registers\n\t syntax: reg [read|write] <reg> [value]" },
-    { "regdbg",  cmd_reg_dbg,    "read debug registers" },
+    // { "regdbg",  cmd_reg_dbg,    "read debug registers" },
     { "br",      cmd_br,         "list, set or delete a breakpoint by address\n\t syntax: br set <address> | br delete <address> | br list" },
+    // { "wp",      cmd_br,         "list, set or delete a watchpoint by address\n\t syntax: wp set <address> | wp delete <address> | wp list" },
     { "q",       cmd_exit,       "exits the program" },
     { NULL,       NULL,           NULL }
 };

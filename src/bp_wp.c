@@ -3,11 +3,6 @@
 #include <stdio.h>
 #include <inttypes.h>
 
-// TODO: watchpoints
-static breakpoint_t *breakpoints = NULL;
-static size_t bp_count = 0;
-static size_t bp_capacity = 0;
-
 static int ensure_capacity(size_t min_capacity) {
   if(bp_capacity >= min_capacity) {
     // already big enough
