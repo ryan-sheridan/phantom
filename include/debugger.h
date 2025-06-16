@@ -16,4 +16,6 @@ int print_registers(void);
 int write_registers(const char reg[], uint64_t value);
 int set_breakpoint(uint64_t addr);
 
+int print_debug_registers();
+
 #endif

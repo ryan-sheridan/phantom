@@ -16,4 +16,6 @@ kern_return_t mach_detach();
 kern_return_t mach_register_read();
 kern_return_t mach_register_write(const char reg[], uint64_t value);
 
+kern_return_t mach_register_debug_read();
+
 #endif

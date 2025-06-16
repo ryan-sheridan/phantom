@@ -1,6 +1,7 @@
 #include "debugger.h"
 #include "mach_process.h"
 #include <mach/kern_return.h>
+#include <stdio.h>
 
 pid_t attached_pid = 0;
 
@@ -74,6 +75,17 @@ int write_registers(const char reg[], uint64_t value) {
   if(kr != KERN_SUCCESS) {
     fprintf(stderr,
               "[-] mach_register_write failed: %s (0x%x)\n",
+              mach_error_string(kr),
+              kr);
+  }
+  return 0;
+}
+
+int print_debug_registers() {
+  kern_return_t kr = mach_register_debug_read();
+  if(kr != KERN_SUCCESS) {
+    fprintf(stderr,
+              "[-] mach_register_debug_read failed: %s (0x%x)\n",
               mach_error_string(kr),
               kr);
   }

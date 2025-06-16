@@ -160,6 +160,15 @@ int cmd_reg(int argc, char **argv) {
   return 0;
 }
 
+int cmd_reg_dbg(int argc, char **argv) {
+  if(!attached_pid) {
+    printf("You have to attach a process first!\n");
+    return -1;
+  }
+  print_debug_registers();
+  return 0;
+}
+
 // array of builtin commands, each entry has a
 // - name - word that you type
 // - func - the function to call
@@ -171,6 +180,7 @@ const builtin_cmd_t builtins[] = {
  { "suspend", cmd_interrupt, "suspend attached process execution" },
  { "detach", cmd_detach, "detach from attached process" },
  { "reg", cmd_reg, "read or write to registers \n\t\tsyntax: \n\t\t\treg [read|write]" },
+ { "regdbg", cmd_reg_dbg, "read debug registers" },
  { "q", cmd_exit, "exits the program" },
  { NULL, NULL, NULL } // end marker
 };

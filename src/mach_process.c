@@ -4,6 +4,11 @@
 #include <pthread.h>
 #include <inttypes.h>
 #include <stdlib.h>
+#include <mach/arm/thread_status.h>
+
+#ifndef ARM_DEBUG_REG_MAX
+#define ARM_DEBUG_REG_MAX 16
+#endif
 
 extern void *exception_listener(void *arg);
 
@@ -153,6 +158,58 @@ kern_return_t mach_detach() {
       }
       exc_port = MACH_PORT_NULL;
   }
+  return KERN_SUCCESS;
+}
+
+kern_return_t mach_register_debug_read() {
+  thread_act_port_array_t thread_list;
+  mach_msg_type_number_t thread_count;
+  kern_return_t kr;
+
+  // get threads in task
+  kr = task_threads(target_task, &thread_list, &thread_count);
+  if (kr != KERN_SUCCESS) {
+      fprintf(stderr, "task_threads failed: %s\n", mach_error_string(kr));
+      return kr;
+  }
+
+  // grab the first thread 64-bit state
+  arm_debug_state64_t dbg;
+  mach_msg_type_number_t state_count = ARM_DEBUG_STATE64_COUNT;
+
+  kr = thread_get_state(thread_list[0],
+                        ARM_DEBUG_STATE64,
+                        (thread_state_t)&dbg,
+                        &state_count);
+  if (kr != KERN_SUCCESS) {
+      fprintf(stderr, "thread_get_state failed: %s\n", mach_error_string(kr));
+      // clean up
+      vm_deallocate(mach_task_self(), (vm_address_t)thread_list,
+                    thread_count * sizeof(thread_t));
+      return kr;
+  }
+
+  // 3) Print all breakpoint value (BVR) and control (BCR) registers
+  printf("=== ARM64 Breakpoint Registers ===\n");
+  for (unsigned i = 0; i < ARM_DEBUG_REG_MAX; i++) {
+      printf("BVR[%u] = 0x%016llx    BCR[%u] = 0x%016llx\n",
+             i, dbg.__bvr[i],
+             i, dbg.__bcr[i]);
+  }
+
+  // 4) Print all watchpoint value (WVR) and control (WCR) registers
+  printf("\n=== ARM64 Watchpoint Registers ===\n");
+  for (unsigned i = 0; i < ARM_DEBUG_REG_MAX; i++) {
+      printf("WVR[%u] = 0x%016llx    WCR[%u] = 0x%016llx\n",
+             i, dbg.__wvr[i],
+             i, dbg.__wcr[i]);
+  }
+
+  // 5) Clean up the thread list
+  vm_deallocate(mach_task_self(),
+                (vm_address_t)thread_list,
+                thread_count * sizeof(thread_t));
+
   return KERN_SUCCESS;
 }
 
