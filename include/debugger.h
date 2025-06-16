@@ -5,6 +5,7 @@
 #include <sys/wait.h>   // waitpid
 #include <signal.h>
 #include <string.h>
+#include "bp_wp.h"
 
 extern pid_t attached_pid;
 
