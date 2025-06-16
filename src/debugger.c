@@ -93,5 +93,6 @@ int print_debug_registers() {
 }
 
 int set_breakpoint(uint64_t addr) {
+  kern_return_t kr = mach_register_write
   return 0;
 }

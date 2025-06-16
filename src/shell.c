@@ -163,31 +163,52 @@ int cmd_reg(int argc, char **argv) {
 int cmd_reg_dbg(int argc, char **argv) {
   if(!attached_pid) {
     printf("You have to attach a process first!\n");
-    return -1;
+    return 1;
   }
   print_debug_registers();
   return 0;
 }
 
-int cmd_br(int argc)
+int cmd_br(int argc, char **argv) {
+  if(!attached_pid) {
+    printf("You have to attach a process first\n");
+    return 1;
+  }
+
+  if(argc < 2) {
+    printf("Usage: br set <address> | br delete <address>\n");
+    return 1;
+  }
+
+  const char *arg = argv[1];
+  if(argc < 3 && strcmp(arg, "list") == 0) {
+
+    return 0;
+  }
+
+  uint64_t addr = strtoull(argv[2], NULL, 0);
+
+  set_breakpoint(addr);
+
+  return 0;
+}
 
 // array of builtin commands, each entry has a
 // - name - word that you type
 // - func - the function to call
 // - help - a short desc of the function
 const builtin_cmd_t builtins[] = {
- { "help", cmd_help, "shows the help page" },
- { "attach", cmd_attach, "attach to a process by pid or name" },
- { "resume", cmd_resume, "resume attached process execution" },
- { "suspend", cmd_interrupt, "suspend attached process execution" },
- { "detach", cmd_detach, "detach from attached process" },
- { "reg", cmd_reg, "read or write to registers \n\t\tsyntax: \n\t\t\treg [read|write]" },
- { "regdbg", cmd_reg_dbg, "read debug registers" },
- { "br", cmd_br, "set a breakpoint at an address \n\t\tsyntax: \n\t\tbr " },
- { "q", cmd_exit, "exits the program" },
- { NULL, NULL, NULL } // end marker
+    { "help",    cmd_help,       "shows the help page" },
+    { "attach",  cmd_attach,     "attach to a process by pid or name" },
+    { "resume",  cmd_resume,     "resume attached process execution" },
+    { "suspend", cmd_interrupt,  "suspend attached process execution" },
+    { "detach",  cmd_detach,     "detach from attached process" },
+    { "reg",     cmd_reg,        "read or write to registers\n\t syntax: reg [read|write] <reg> [value]" },
+    { "regdbg",  cmd_reg_dbg,    "read debug registers" },
+    { "br",      cmd_br,         "list, set or delete a breakpoint by address\n\t syntax: br set <address> | br delete <address> | br list" },
+    { "q",       cmd_exit,       "exits the program" },
+    { NULL,       NULL,           NULL }
 };
-
 
 // here we check if the first word (argv[0]) matches any builtin command
 // if it does, call that command function and return the result

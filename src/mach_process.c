@@ -3,6 +3,7 @@
 #include <mach/kern_return.h>
 #include <pthread.h>
 #include <inttypes.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <mach/arm/thread_status.h>
 
@@ -161,7 +162,7 @@ kern_return_t mach_detach() {
   return KERN_SUCCESS;
 }
 
-kern_return_t mach_register_debug_read() {
+kern_return_t mach_register_debug_print() {
   thread_act_port_array_t thread_list;
   mach_msg_type_number_t thread_count;
   kern_return_t kr;
@@ -213,7 +214,7 @@ kern_return_t mach_register_debug_read() {
   return KERN_SUCCESS;
 }
 
-kern_return_t mach_register_read() {
+kern_return_t mach_register_print() {
   thread_act_port_array_t thread_list;
   mach_msg_type_number_t thread_count;
   kern_return_t kr;
@@ -332,4 +333,9 @@ kern_return_t mach_register_write(const char reg[], uint64_t value) {
                 (vm_address_t)thread_list,
                 thread_count * sizeof(thread_t));
   return kr;
+}
+
+int mach_set_breakpoint(uint64_t addr) {
+
+  return 0;
 }
