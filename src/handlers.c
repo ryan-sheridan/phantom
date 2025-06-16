@@ -1,7 +1,29 @@
 #include "mach_exc.h"
 #include "mach_process.h"
 #include <mach/mach_error.h>
+#include <mach/exc.h>
+#include <mach/exception_types.h>
 #include <stdio.h>
+
+const char *
+exception_name(exception_type_t type) {
+    switch (type) {
+        case EXC_BAD_ACCESS:        return "EXC_BAD_ACCESS";        // 1
+        case EXC_BAD_INSTRUCTION:   return "EXC_BAD_INSTRUCTION";   // 2
+        case EXC_ARITHMETIC:        return "EXC_ARITHMETIC";        // 3
+        case EXC_EMULATION:         return "EXC_EMULATION";         // 4
+        case EXC_SOFTWARE:          return "EXC_SOFTWARE";          // 5
+        case EXC_BREAKPOINT:        return "EXC_BREAKPOINT";        // 6
+        case EXC_SYSCALL:           return "EXC_SYSCALL";           // 7
+        case EXC_MACH_SYSCALL:      return "EXC_MACH_SYSCALL";      // 8
+        case EXC_RPC_ALERT:         return "EXC_RPC_ALERT";         // 9
+        case EXC_CRASH:             return "EXC_CRASH";             // 10
+        case EXC_RESOURCE:          return "EXC_RESOURCE";          // 11
+        case EXC_GUARD:             return "EXC_GUARD";             // 12
+        case EXC_CORPSE_NOTIFY:     return "EXC_CORPSE_NOTIFY";     // 13
+        default:                    return "UNKNOWN_EXCEPTION";
+    }
+}
 
 kern_return_t catch_mach_exception_raise(
     mach_port_t exception_port,
@@ -11,8 +33,8 @@ kern_return_t catch_mach_exception_raise(
     mach_exception_data_t code,
     mach_msg_type_number_t codeCnt
 ) {
-    printf("\n[!] Caught exception %d on thread 0x%x, code=0x%llx\n",
-           exception, thread, code[0]);
+    printf("\n[!] Caught exception %s on thread 0x%x, code=0x%llx\n",
+           exception_name(exception), thread, code[0]);
     mach_suspend();
     printf("phantom> ");
     fflush(stdout);
