@@ -206,11 +206,21 @@ int cmd_br(int argc, char **argv) {
 
   if (strcmp(arg, "delete") == 0) {
     if (argc != 3) {
-      printf("Usage: br delete <address>\n");
+      printf("Usage: br delete <address|index>\n");
       return 1;
     }
-    addr = strtoull(argv[2], NULL, 0);
-    remove_breakpoint_by_addr(addr);
+    const char *param = argv[2];
+
+    // if it's all digits (no "0x" prefix), treat as breakpoint index
+    if (strspn(param, "0123456789") == strlen(param)) {
+      int idx = atoi(param);
+      remove_breakpoint_at_index(idx);
+    } else {
+      // otherwise parse as an address (hex or decimal)
+      addr = strtoull(param, NULL, 0);
+      remove_breakpoint_by_addr(addr);
+    }
+
     return 0;
   }
 
