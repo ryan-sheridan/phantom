@@ -17,5 +17,6 @@ kern_return_t mach_detach();
 kern_return_t mach_register_print();
 kern_return_t mach_register_write(const char reg[], uint64_t value);
 kern_return_t mach_register_debug_print();
+kern_return_t mach_set_breakpoint(int index, uint64_t addr);
 
 #endif

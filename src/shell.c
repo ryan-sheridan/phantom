@@ -241,7 +241,7 @@ const builtin_cmd_t builtins[] = {
     {"detach", cmd_detach, "detach from attached process"},
     {"reg", cmd_reg,
      "read or write to registers\n\t syntax: reg [read|write] <reg> [value]"},
-    // { "regdbg",  cmd_reg_dbg,    "read debug registers" },
+    { "regdbg",  cmd_reg_dbg,    "read debug registers" },
     {"br", cmd_br,
      "list, set or delete a breakpoint by address\n\t syntax: br set <address> "
      "| br delete <address> | br list"},

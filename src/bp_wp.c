@@ -1,7 +1,9 @@
 #include "bp_wp.h"
+#include <mach/kern_return.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <inttypes.h>
+#include "mach_process.h"
 
 static int ensure_capacity(size_t min_capacity) {
   if(bp_capacity >= min_capacity) {
@@ -48,6 +50,11 @@ int add_breakpoint(uint64_t addr) {
   // append new entry
   breakpoints[bp_count].index = (int)bp_count;
   breakpoints[bp_count].addr = addr;
+  kern_return_t kr = mach_set_breakpoint((int)bp_count, addr);
+  if(kr != KERN_SUCCESS) {
+    printf("dunno what to tell you man\n");
+    return -1;
+  }
 
   return (int)(bp_count++);
 }
