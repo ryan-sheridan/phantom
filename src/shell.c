@@ -169,6 +169,8 @@ int cmd_reg_dbg(int argc, char **argv) {
   return 0;
 }
 
+int cmd_br(int argc)
+
 // array of builtin commands, each entry has a
 // - name - word that you type
 // - func - the function to call
@@ -181,9 +183,11 @@ const builtin_cmd_t builtins[] = {
  { "detach", cmd_detach, "detach from attached process" },
  { "reg", cmd_reg, "read or write to registers \n\t\tsyntax: \n\t\t\treg [read|write]" },
  { "regdbg", cmd_reg_dbg, "read debug registers" },
+ { "br", cmd_br, "set a breakpoint at an address \n\t\tsyntax: \n\t\tbr " },
  { "q", cmd_exit, "exits the program" },
  { NULL, NULL, NULL } // end marker
 };
+
 
 // here we check if the first word (argv[0]) matches any builtin command
 // if it does, call that command function and return the result
