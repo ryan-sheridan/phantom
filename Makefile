@@ -2,7 +2,8 @@
 
 # Compiler and flags
 CC       = gcc
-CFLAGS   = -Iinclude -Wall -Wextra -Wstrict-prototypes -pthread
+CFLAGS = -std=gnu11 -Iinclude -D_DARWIN_C_SOURCE \
+         -Wall -Wextra -Wstrict-prototypes -O2 -pthread
 
 # Info.plist and section flags
 PLIST    = Info.plist

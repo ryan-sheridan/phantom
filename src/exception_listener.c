@@ -4,6 +4,7 @@
 #include <mach/message.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "shell.h"
 
 extern kern_return_t mach_exc_server(mach_msg_header_t *InHeadP,
                                      mach_msg_header_t *OutHeadP);
@@ -29,15 +30,13 @@ void *exception_listener(void *arg) {
           stderr,
           "\n[i] exception_listener: receive port destroyed (%s) (detach)\n",
           mach_error_string(kr));
-      printf("phantom> ");
-      fflush(stdout);
+      print_prompt();
       break;
     }
     if (kr != KERN_SUCCESS) {
       fprintf(stderr, "[-] exception_listener: mach_msg receive failed: %s\n",
               mach_error_string(kr));
-      printf("phantom> ");
-      fflush(stdout);
+      print_prompt();
       continue;
     }
 
@@ -46,8 +45,7 @@ void *exception_listener(void *arg) {
                                         (mach_msg_header_t *)&out_msg);
     if (!handled) {
       fprintf(stderr, "[-] exception_listener: dispatch failed\n");
-      printf("phantom> ");
-      fflush(stdout);
+      print_prompt();
       continue;
     }
 

@@ -284,24 +284,64 @@ static int dispatch_builtin(int argc, char **argv) {
   return -1;
 }
 
-// interactive shell loop
-void shell_loop(void) {
-  char *line = NULL;
+// thank you gpt
+// for some reason this fixes segfault that happens when i use -O2
+// but we need -O2 because for some reason exception ports dont work
+// - man i love c
+static char *read_line(void) {
+  size_t cap = 128;
   size_t len = 0;
+  char *buf = malloc(cap);
+  if (!buf) {
+    perror("malloc");
+    return NULL;
+  }
 
-  while (print_prompt(), getline(&line, &len, stdin) > 0) {
+  int c;
+  while ((c = getchar()) != EOF && c != '\n') {
+    if (len + 1 >= cap) {
+      cap *= 2;
+      char *tmp = realloc(buf, cap);
+      if (!tmp) {
+        free(buf);
+        perror("realloc");
+        return NULL;
+      }
+      buf = tmp;
+    }
+    buf[len++] = (char)c;
+  }
+
+  if (c == EOF && len == 0) {
+    free(buf);
+    return NULL;
+  }
+
+  buf[len++] = '\n'; // retain newline for tokenization consistency
+  buf[len] = '\0';
+  return buf;
+}
+
+void shell_loop(void) {
+  char *line;
+  while (print_prompt(), (line = read_line()) != NULL) {
     char *argv[64];
     int argc = 0;
-    for (char *tok = strtok(line, " \t\r\n"); tok && argc < 63;
-         tok = strtok(NULL, " \t\r\n")) {
+
+    // tokenize on whitespace
+    char *tok = strtok(line, " \t\r\n");
+    while (tok && argc < 63) {
       argv[argc++] = tok;
+      tok = strtok(NULL, " \t\r\n");
     }
     argv[argc] = NULL;
-    if (argc == 0)
-      continue;
-    if (dispatch_builtin(argc, argv) == -1) {
-      printf("phantom: command not found: %s\n", argv[0]);
+
+    if (argc > 0) {
+      if (dispatch_builtin(argc, argv) == -1) {
+        printf("phantom: command not found: %s\n", argv[0]);
+      }
     }
+
+    free(line);
   }
-  free(line);
 }
