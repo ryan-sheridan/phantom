@@ -2,7 +2,7 @@
 
 # Compiler and flags
 CC       = gcc
-CFLAGS   = -Iinclude -Wall -Wextra -O2 -Wstrict-prototypes -pthread
+CFLAGS   = -Iinclude -Wall -Wextra -Wstrict-prototypes -pthread
 
 # Info.plist and section flags
 PLIST    = Info.plist
