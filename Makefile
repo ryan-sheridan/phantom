@@ -10,11 +10,11 @@ SECTFLAG = -Wl,-sectcreate,__TEXT,__info_plist,$(PLIST)
 
 # Sources and targets
 SRCS     = main.c \
-           src/mach_process.c \
            src/shell.c \
            src/debugger.c \
            src/exception_listener.c \
            src/handlers.c \
+           src/mach_process.c \
            src/mach_excServer.c \
            src/mach_excUser.c \
            src/bp_wp.c
@@ -41,7 +41,7 @@ $(TARGET): $(OBJS) $(PLIST)
 
 # Build the test helper
 test:
-	gcc test_proc/test_proc.c -o test_proc/test_proc
+	gcc test_proc/test_proc.c -o test_proc/test
 
 # Run phantom against the test helper
 run: test $(TARGET)

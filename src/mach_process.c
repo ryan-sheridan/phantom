@@ -3,6 +3,8 @@
 #include <mach/arm/thread_status.h>
 #include <mach/exception_types.h>
 #include <mach/kern_return.h>
+#include <mach/mach_types.h>
+#include <mach/message.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -112,6 +114,7 @@ kern_return_t setup_exception_port(pid_t pid) {
 kern_return_t mach_resume() { return task_resume(target_task); }
 
 kern_return_t mach_detach() {
+  // restore to saved old ports
   kern_return_t kr;
   for (mach_msg_type_number_t i = 0; i < saved_exc_count; i++) {
     mach_port_t port = old_ports[i];
@@ -141,29 +144,40 @@ kern_return_t mach_detach() {
   return KERN_SUCCESS;
 }
 
-kern_return_t mach_register_debug_print() {
-  thread_act_port_array_t thread_list;
-  mach_msg_type_number_t thread_count;
-  kern_return_t kr;
+typedef struct {
+  thread_act_port_array_t threads;
+  mach_msg_type_number_t count;
+} ThreadList;
 
-  // get threads in task
-  kr = task_threads(target_task, &thread_list, &thread_count);
+static ThreadList _get_thread_list(mach_port_t target_task) {
+  ThreadList tl = {.threads = NULL, .count = 0};
+
+  kern_return_t kr = task_threads(target_task, &tl.threads, &tl.count);
   if (kr != KERN_SUCCESS) {
     fprintf(stderr, "task_threads failed: %s\n", mach_error_string(kr));
-    return kr;
+    return tl;
   }
+
+  return tl;
+}
+
+kern_return_t mach_register_debug_print() {
+  ThreadList tl;
+  kern_return_t kr;
+
+  tl = _get_thread_list(target_task);
 
   // grab the first thread 64-bit state
   arm_debug_state64_t dbg;
   mach_msg_type_number_t state_count = ARM_DEBUG_STATE64_COUNT;
 
-  kr = thread_get_state(thread_list[0], ARM_DEBUG_STATE64, (thread_state_t)&dbg,
+  kr = thread_get_state(tl.threads[0], ARM_DEBUG_STATE64, (thread_state_t)&dbg,
                         &state_count);
   if (kr != KERN_SUCCESS) {
     fprintf(stderr, "thread_get_state failed: %s\n", mach_error_string(kr));
     // clean up
-    vm_deallocate(mach_task_self(), (vm_address_t)thread_list,
-                  thread_count * sizeof(thread_t));
+    vm_deallocate(mach_task_self(), (vm_address_t)tl.threads,
+                  tl.count * sizeof(thread_t));
     return kr;
   }
 
@@ -182,35 +196,29 @@ kern_return_t mach_register_debug_print() {
   }
 
   // 5) Clean up the thread list
-  vm_deallocate(mach_task_self(), (vm_address_t)thread_list,
-                thread_count * sizeof(thread_t));
+  vm_deallocate(mach_task_self(), (vm_address_t)tl.threads,
+                tl.count * sizeof(thread_t));
 
   return KERN_SUCCESS;
 }
 
 kern_return_t mach_register_print() {
-  thread_act_port_array_t thread_list;
-  mach_msg_type_number_t thread_count;
   kern_return_t kr;
+  ThreadList tl;
 
-  // get threads in task
-  kr = task_threads(target_task, &thread_list, &thread_count);
-  if (kr != KERN_SUCCESS) {
-    fprintf(stderr, "task_threads failed: %s\n", mach_error_string(kr));
-    return kr;
-  }
+  tl = _get_thread_list(target_task);
 
   // grab the first thread 64-bit state
   arm_thread_state64_t arm64;
   mach_msg_type_number_t state_count = ARM_THREAD_STATE64_COUNT;
 
-  kr = thread_get_state(thread_list[0], ARM_THREAD_STATE64,
-                        (thread_state_t)&arm64, &state_count);
+  kr = thread_get_state(tl.threads[0], ARM_THREAD_STATE64,
+                        (thread_state_t)&arm64, &tl.count);
   if (kr != KERN_SUCCESS) {
     fprintf(stderr, "thread_get_state failed: %s\n", mach_error_string(kr));
     // clean up
-    vm_deallocate(mach_task_self(), (vm_address_t)thread_list,
-                  thread_count * sizeof(thread_t));
+    vm_deallocate(mach_task_self(), (vm_address_t)tl.threads,
+                  tl.count* sizeof(thread_t));
     return kr;
   }
 
@@ -231,11 +239,19 @@ kern_return_t mach_register_print() {
   printf("    \033[1mCPSR:\x1b[0m 0x%016" PRIx32 "\n\n", arm64.__cpsr);
 
   // clean up
-  vm_deallocate(mach_task_self(), (vm_address_t)thread_list,
-                thread_count * sizeof(thread_t));
+  vm_deallocate(mach_task_self(), (vm_address_t)tl.threads,
+                tl.count * sizeof(thread_t));
 
   return kr;
 }
+
+// wip
+arm_debug_state64_t _get_thread_debug_state(thread_act_t thread) {
+  arm_debug_state64_t dbg;
+  return dbg;
+}
+
+
 
 kern_return_t mach_register_write(const char reg[], uint64_t value) {
   thread_act_port_array_t thread_list;
@@ -302,17 +318,10 @@ kern_return_t mach_register_write(const char reg[], uint64_t value) {
   return kr;
 }
 
-int mach_set_breakpoint(int index, uint64_t addr) {
-  thread_act_port_array_t thread_list;
-  mach_msg_type_number_t thread_count;
-  kern_return_t kr;
 
-  // get all threads in target task
-  kr = task_threads(target_task, &thread_list, &thread_count);
-  if (kr != KERN_SUCCESS) {
-    fprintf(stderr, "task_threads failed: %s\n", mach_error_string(kr));
-    return kr;
-  }
+
+int mach_set_breakpoint(int index, uint64_t addr) {
+  ThreadList tl = _get_thread_list(target_task);
 
   // something i read online
   const uint64_t ENABLE = (1ULL << 0);
@@ -322,12 +331,12 @@ int mach_set_breakpoint(int index, uint64_t addr) {
   uint64_t bcr_value = ENABLE | PRIV_USR_ONLY | MATCH_EXECUTE | SIZE_4_BYTES;
 
   // iterate over every thread once
-  for (mach_msg_type_number_t i = 0; i < thread_count; i++) {
+  for (mach_msg_type_number_t i = 0; i < tl.count; i++) {
     arm_debug_state64_t dbg;
     mach_msg_type_number_t state_count = ARM_DEBUG_STATE64_COUNT;
 
     // fetch debug state
-    kr = thread_get_state(thread_list[i], ARM_DEBUG_STATE64,
+    kern_return_t kr = thread_get_state(tl.threads[i], ARM_DEBUG_STATE64,
                           (thread_state_t)&dbg, &state_count);
     if (kr != KERN_SUCCESS) {
       fprintf(stderr, "thread_get_state[%u] failed: %s\n", i,
@@ -340,7 +349,7 @@ int mach_set_breakpoint(int index, uint64_t addr) {
     dbg.__bcr[index] = bcr_value;
 
     // write that state back
-    kr = thread_set_state(thread_list[i], ARM_DEBUG_STATE64,
+    kr = thread_set_state(tl.threads[i], ARM_DEBUG_STATE64,
                           (thread_state_t)&dbg, state_count);
     if (kr != KERN_SUCCESS) {
       fprintf(stderr, "thread_set_state[%u] failed: %s\n", i,
@@ -349,10 +358,10 @@ int mach_set_breakpoint(int index, uint64_t addr) {
   }
 
   // clean shit up
-  vm_deallocate(mach_task_self(), (vm_address_t)thread_list,
-                thread_count * sizeof(thread_t));
+  vm_deallocate(mach_task_self(), (vm_address_t)tl.threads,
+                tl.count* sizeof(thread_t));
 
   printf("Requested breakpoint %d at 0x%016" PRIx64 " on %u threads\n", index,
-         addr, thread_count);
+         addr, tl.count);
   return KERN_SUCCESS;
 }
