@@ -8,12 +8,11 @@
 #include <pthread.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include "exception_listener.h"
 
 #ifndef ARM_DEBUG_REG_MAX
 #define ARM_DEBUG_REG_MAX 16
 #endif
-
-extern void *exception_listener(void *arg);
 
 // global exception port and saved state
 static mach_port_t exc_port = MACH_PORT_NULL;
@@ -171,7 +170,7 @@ kern_return_t setup_exception_port(pid_t pid) {
 
     exc_port = MACH_PORT_NULL;
     kr = mach_port_allocate(mach_task_self(),
-                            MACH_PORT_RIGHT_RECEIVE,
+        MACH_PORT_RIGHT_RECEIVE,
                             &exc_port);
     if (kr != KERN_SUCCESS) return kr;
 
@@ -196,6 +195,7 @@ kern_return_t setup_exception_port(pid_t pid) {
                 strerror(err));
         return err;
     }
+    printf("[+] exception listener thread started\n");
     pthread_detach(thr);
     return KERN_SUCCESS;
 }

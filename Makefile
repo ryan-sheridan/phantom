@@ -2,23 +2,14 @@
 
 # Compiler and flags
 CC       = gcc
-CFLAGS   = -Iinclude -Wall -Wextra -O2 -pthread
+CFLAGS   = -Iinclude -Wall -Wextra -Wstrict-prototypes -pthread
 
 # Info.plist and section flags
 PLIST    = Info.plist
 SECTFLAG = -Wl,-sectcreate,__TEXT,__info_plist,$(PLIST)
 
 # Sources and targets
-SRCS     = main.c \
-           src/shell.c \
-           src/debugger.c \
-           src/exception_listener.c \
-           src/handlers.c \
-           src/mach_process.c \
-           src/mach_excServer.c \
-           src/mach_excUser.c \
-           src/bp_wp.c
-
+SRCS     := main.c $(wildcard src/*.c)
 OBJS     = $(SRCS:.c=.o)
 TARGET   = phantom
 
@@ -41,7 +32,7 @@ $(TARGET): $(OBJS) $(PLIST)
 
 # Build the test helper
 test:
-	gcc test_proc/test_proc.c -o test_proc/test
+	gcc test_proc/test_proc.c -o test_proc/test_proc
 
 # Run phantom against the test helper
 run: test $(TARGET)

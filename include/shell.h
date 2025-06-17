@@ -29,9 +29,9 @@ typedef int (*builtin_fn)(int argc, char **argv);
 // - func - the c function that gets called when you run the command
 // - help - a short message about the command
 typedef struct {
- const char *name;
- builtin_fn func;
- const char *help;
+  const char *name;
+  builtin_fn func;
+  const char *help;
 } builtin_cmd_t;
 
 // builtins[]
@@ -45,5 +45,7 @@ extern const builtin_cmd_t builtins[];
 // the loop which is called at the start of the main function
 // once this returns, the program exits
 void shell_loop(void);
+
+void print_prompt(void);
 
 #endif

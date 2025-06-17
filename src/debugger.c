@@ -3,8 +3,6 @@
 #include <mach/kern_return.h>
 #include <stdio.h>
 
-pid_t attached_pid = 0;
-
 int attach(pid_t pid) {
   kern_return_t kr = setup_exception_port(pid);
   if (kr != KERN_SUCCESS) {
@@ -13,7 +11,6 @@ int attach(pid_t pid) {
     return 1;
   }
   printf("[+] Exception port setup configured successfully for: %d\n", pid);
-
   attached_pid = pid;
   return pid;
 }
@@ -70,7 +67,7 @@ int write_registers(const char reg[], uint64_t value) {
   return 0;
 }
 
-int print_debug_registers() {
+int print_debug_registers(void) {
   kern_return_t kr = mach_register_debug_print();
   if (kr != KERN_SUCCESS) {
     fprintf(stderr, "[-] mach_register_debug_read failed: %s (0x%x)\n",
