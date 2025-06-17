@@ -1,6 +1,6 @@
 # phantom
 
-`phantom` is a lightweight debugger for macOS. It allows you to attach to running processes, inspect their state (registers), and control their execution (resume, suspend, detach). It's built using Mach APIs for process control and exception handling.
+`phantom` is a lightweight debugger for macOS. It allows you to attach to running processes, inspect their state (registers), and control their execution (resume, suspend, detach). It's built using Mach APIs for process control and exception handling.  It also supports setting breakpoints to pause execution at specific addresses.
 
 ## Usage
 
@@ -13,6 +13,7 @@
     *   `detach`: Detach from the process.
     *   `reg read`: Read register values.
     *   `reg write <reg> <value>`: Write to a register.
+    *   `br`: list, set or delete a breakpoint by address or index syntax: br set <address> | br delete <address|index> | br list
     *   `q`: Exit.
 
 ## Key Files
