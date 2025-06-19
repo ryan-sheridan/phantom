@@ -1,17 +1,19 @@
-#include <stdio.h>
 #include <unistd.h>
+#include <stdint.h>
+
+static const char hidden_str[] = "This is the secret string!";
 
 int main(void) {
-    printf("PID %d: will crash in 15 seconds…\n", getpid());
-    fflush(stdout);
+    __asm__ volatile (
+        "ldr x8, %0\n"
+        :
+        : "m"(hidden_str)
+        : "x8"
+    );
 
-    sleep(15);
-
-    // Deliberately crash: write to address 0
-    volatile int *p = NULL;
-    *p = 42;
-
-    // Should never reach here
+    for (;;) {
+        sleep(1);
+    }
     return 0;
 }
 

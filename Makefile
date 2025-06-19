@@ -33,7 +33,7 @@ $(TARGET): $(OBJS) $(PLIST)
 
 # Build the test helper
 test:
-	gcc test_proc/test_proc.c -o test_proc/test
+	gcc -O0 -fno-pie -Wl,-no_pie test_proc/test_proc.c -o test_proc/test
 
 # Run phantom against the test helper
 run: test $(TARGET)
