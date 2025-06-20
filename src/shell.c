@@ -260,30 +260,20 @@ static int cmd_r64(int argc, char **argv) {
 // - func - the function to call
 const builtin_cmd_t builtins[] = {
     {"help", cmd_help, "shows the help page"},
-
     {"attach", cmd_attach, "attach to a process by pid or name"},
-
     {"c", cmd_continue, "continue attached process execution"},
-
     {"suspend", cmd_interrupt, "suspend attached process execution"},
-
     {"detach", cmd_detach, "detach from attached process"},
-
     {"reg", cmd_reg,
      "read or write to registers\n\tsyntax: reg [read|write] <reg> [value]"},
-
     {"regdbg", cmd_reg_dbg, "read debug registers"},
-
     {"br", cmd_br,
      "list, set or delete a breakpoint by address or index\n\t"
      "syntax: br set <address> | br delete <address|index> | br list"},
-
     {"wp", cmd_wp,
      "list, set or delete a watchpoint by address or index\n\t"
      "syntax: wp set <address> | wp delete <address|index> | wp list"},
-
     {"r64", cmd_r64, "read from an address in memory\n\tsyntax: r64 [addr]"},
-
     {"q", cmd_exit, "exits the program"},
 
     {NULL, NULL, NULL}};
