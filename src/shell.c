@@ -255,6 +255,12 @@ static int cmd_r64(int argc, char **argv) {
   return 0;
 }
 
+int cmd_w64(int argc, char **argv) {
+  (void)argc;
+  (void)argv;
+  return 0;
+}
+
 // array of builtin commands, each entry has a
 // - name - word that you type
 // - func - the function to call
@@ -274,6 +280,8 @@ const builtin_cmd_t builtins[] = {
      "list, set or delete a watchpoint by address or index\n\t"
      "syntax: wp set <address> | wp delete <address|index> | wp list"},
     {"r64", cmd_r64, "read from an address in memory\n\tsyntax: r64 [addr]"},
+    {"w64", cmd_w64, "write to an address in memory\n\tsyntax: w64 [addr] [bytes]"},
+
     {"q", cmd_exit, "exits the program"},
 
     {NULL, NULL, NULL}};
