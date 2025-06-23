@@ -107,7 +107,7 @@ static void _hex_dump(const void *data, size_t size) {
   }
 }
 
-int read64(uint64_t addr) {
+int read64(uintptr_t addr) {
   uint64_t out;
   kern_return_t kr = mach_read64(addr, &out);
   if (kr != KERN_SUCCESS) {
@@ -117,6 +117,48 @@ int read64(uint64_t addr) {
   }
 
   _hex_dump(&out, sizeof(uint64_t));
+
+  return 0;
+}
+
+int read32(uintptr_t addr) {
+  uint32_t out;
+  kern_return_t kr = mach_read32(addr, &out);
+  if (kr != KERN_SUCCESS) {
+    fprintf(stderr, "[-] mach_read32 failed: %s (0x%x)\n",
+            mach_error_string(kr), kr);
+    return 1;
+  }
+
+  _hex_dump(&out, sizeof(uint32_t));
+
+  return 0;
+}
+
+int write64(uintptr_t addr, uint64_t bytes) {
+  kern_return_t  kr = mach_write64(addr, bytes);
+  if (kr != KERN_SUCCESS) {
+    fprintf(stderr, "[-] mach_write64 failed: %s (0x%x)\n",
+            mach_error_string(kr), kr);
+    return 1;
+  }
+
+  // hexdump final changes
+  read64(addr);
+
+  return 0;
+}
+
+int write32(uintptr_t addr, uint32_t bytes) {
+  kern_return_t kr = mach_write32(addr, bytes);
+  if (kr != KERN_SUCCESS) {
+    fprintf(stderr, "[-] mach_write32 failed: %s (0x%x)\n",
+            mach_error_string(kr), kr);
+    return 1;
+  }
+
+  // hexdump final changes
+  read32(addr);
 
   return 0;
 }

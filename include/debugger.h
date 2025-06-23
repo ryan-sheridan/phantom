@@ -20,6 +20,11 @@ int set_breakpoint(uint64_t addr);
 
 int print_debug_registers(void);
 
-int read64(uint64_t addr);
+// vmrw
+int read64(uintptr_t addr);
+int read32(uintptr_t addr);
+
+int write64(uintptr_t addr, uint64_t bytes);
+int write32(uintptr_t addr, uint32_t bytes);
 
 #endif

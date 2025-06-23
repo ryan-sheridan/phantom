@@ -2,6 +2,7 @@
 #include "exception_listener.h"
 #include <inttypes.h>
 #include <mach/kern_return.h>
+#include <mach/vm_map.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -310,26 +311,67 @@ int mach_set_breakpoint(int index, uint64_t addr) {
   return KERN_SUCCESS;
 }
 
-kern_return_t mach_read64(uintptr_t addr, uint64_t *out) {
-  kern_return_t kr;
-  vm_size_t bytes_read = 0;
-
+// read helper
+kern_return_t mach_read(uintptr_t addr, void *out, size_t size) {
   if (out == NULL) {
     return KERN_INVALID_ARGUMENT;
   }
 
-  kr = vm_read_overwrite(target_task, (vm_address_t)addr, sizeof(*out),
-                         (vm_address_t)out, &bytes_read);
+  vm_size_t bytes_read = 0;
+
+  kern_return_t kr =
+      vm_read_overwrite(target_task, (vm_address_t)addr, (vm_size_t)size,
+                        (vm_address_t)out, &bytes_read);
 
   if (kr != KERN_SUCCESS) {
-    fprintf(stderr, "vm_read_overwrite failed: %s\n", mach_error_string(kr));
+    fprintf(stderr, "mach_read: vm_read_overwrite failed: %s\n", mach_error_string(kr));
+  }
+
+  if (bytes_read != size) {
+    fprintf(stderr, "vm_read_overwrite read only %zu bytes instead of %zu\n",
+            (size_t)bytes_read, size);
+    return KERN_FAILURE;
   }
 
   return KERN_SUCCESS;
 }
 
-kern_return_t mach_write64(uint64_t addr, uint64_t val) { return KERN_SUCCESS; }
+// write helper
+kern_return_t mach_write(uintptr_t addr, void *bytes, size_t size) {
+  kern_return_t kr =
+      vm_write(target_task, (vm_address_t)addr, (vm_offset_t)bytes, size);
 
-kern_return_t mach_read32(uint64_t addr, uint32_t *out) { return KERN_SUCCESS; }
+  if (kr != KERN_SUCCESS) {
+    fprintf(stderr, "mach_write: vm_write failed: %s\n", mach_error_string(kr));
+  }
 
-kern_return_t mach_write32(uint64_t addr, uint32_t val) { return KERN_SUCCESS; }
+  return KERN_SUCCESS;
+}
+
+kern_return_t mach_read64(uintptr_t addr, uint64_t *out) {
+  return mach_read(addr, out, sizeof(*out));
+}
+
+kern_return_t mach_read32(uintptr_t addr, uint32_t *out) {
+  return mach_read(addr, out, sizeof(*out));
+}
+
+kern_return_t mach_write64(uintptr_t addr, uint64_t bytes) {
+  kern_return_t kr = mach_write(addr, (uint64_t *)bytes, sizeof(uint64_t));
+
+  if (kr != KERN_SUCCESS) {
+    fprintf(stderr, "mach_write64 failed: %s\n", mach_error_string(kr));
+  }
+
+  return KERN_SUCCESS;
+}
+
+kern_return_t mach_write32(uintptr_t addr, uint32_t bytes) {
+  kern_return_t kr = mach_write(addr, &bytes, sizeof(uint32_t));
+
+  if (kr != KERN_SUCCESS) {
+    fprintf(stderr, "mach_write32 failed: %s\n", mach_error_string(kr));
+  }
+
+  return KERN_SUCCESS;
+}

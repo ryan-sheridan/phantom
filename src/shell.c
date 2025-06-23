@@ -255,9 +255,51 @@ static int cmd_r64(int argc, char **argv) {
   return 0;
 }
 
-int cmd_w64(int argc, char **argv) {
-  (void)argc;
-  (void)argv;
+static int cmd_w64(int argc, char **argv) {
+  if(require_attached())
+    return 1;
+
+  if(argc < 3) {
+    printf("Usage: w64 <addr> <bytes>");
+  }
+
+  uint64_t addr = strtoull(argv[1], NULL, 0);
+  uint64_t bytes = strtoull(argv[2], NULL, 0);
+
+  write64(addr, bytes);
+
+  return 0;
+}
+
+static int cmd_r32(int argc, char **argv) {
+  if (require_attached())
+    return 1;
+
+  if (argc < 2) {
+    printf("Usage: r32 <addr>\n");
+    return 1;
+  }
+
+  uint64_t addr = strtoull(argv[1], NULL, 0);
+  read32(addr);  // Assumes you have a read32 function
+
+  return 0;
+}
+
+static int cmd_w32(int argc, char **argv) {
+  if (require_attached())
+    return 1;
+
+  if (argc < 3) {
+    printf("Usage: w32 <addr> <bytes>\n");
+    return 1;
+  }
+
+  uint64_t addr = strtoull(argv[1], NULL, 0);
+  uint32_t bytes = strtoul(argv[2], NULL, 0);  // 32-bit version
+
+  write32(addr, bytes);  // Assumes you have a write32 function
+
   return 0;
 }
 
@@ -279,8 +321,11 @@ const builtin_cmd_t builtins[] = {
     {"wp", cmd_wp,
      "list, set or delete a watchpoint by address or index\n\t"
      "syntax: wp set <address> | wp delete <address|index> | wp list"},
-    {"r64", cmd_r64, "read from an address in memory\n\tsyntax: r64 [addr]"},
-    {"w64", cmd_w64, "write to an address in memory\n\tsyntax: w64 [addr] [bytes]"},
+
+    {"r64", cmd_r64, "read 64 bits from an address in memory\n\tsyntax: r64 [addr]"},
+    {"w64", cmd_w64, "write 64 bits to an address in memory\n\tsyntax: w64 [addr] [bytes]"},
+    {"r32", cmd_r32, "read 32 bits from an address in memory\n\tsyntax: r32 [addr]"},
+    {"w32", cmd_w32, "write 32 bits to an address in memory\n\tsyntax: w32 [addr] [bytes]"},
 
     {"q", cmd_exit, "exits the program"},
 
