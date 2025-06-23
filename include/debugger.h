@@ -27,4 +27,9 @@ int read32(uintptr_t addr);
 int write64(uintptr_t addr, uint64_t bytes);
 int write32(uintptr_t addr, uint32_t bytes);
 
+// aslr
+// - this will toggle if we are using the aslr slide when we r/w to memory
+int toggle_slide(void);
+int print_slide(void);
+
 #endif

@@ -37,12 +37,14 @@ kern_return_t mach_write64(uintptr_t addr, uint64_t bytes);
 kern_return_t mach_write32(uintptr_t addr, uint32_t bytes);
 
 // aslr
-extern uint64_t slide;
+extern mach_vm_address_t slide;
 extern bool slide_enabled;
 
 // this should auto slide, every read and write should be to addr + slide
-kern_return_t mach_set_slide_enabled(bool enabled);
+kern_return_t mach_set_auto_slide_enabled(bool enabled);
 // we can also set the slide to whatever value we want
-kern_return_t mach_set_slide_value(uint64_t slide);
+kern_return_t mach_set_slide_value(mach_vm_address_t slide);
+// returns the aslr slide into &out_slide
+kern_return_t mach_get_aslr_slide(mach_vm_address_t *out_slide);
 
 #endif

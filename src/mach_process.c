@@ -1,6 +1,7 @@
 #include "mach_process.h"
 #include "exception_listener.h"
 #include <inttypes.h>
+#include <mach-o/dyld_images.h>
 #include <mach/kern_return.h>
 #include <mach/vm_map.h>
 #include <pthread.h>
@@ -324,7 +325,8 @@ kern_return_t mach_read(uintptr_t addr, void *out, size_t size) {
                         (vm_address_t)out, &bytes_read);
 
   if (kr != KERN_SUCCESS) {
-    fprintf(stderr, "mach_read: vm_read_overwrite failed: %s\n", mach_error_string(kr));
+    fprintf(stderr, "mach_read: vm_read_overwrite failed: %s\n",
+            mach_error_string(kr));
   }
 
   if (bytes_read != size) {
@@ -373,5 +375,74 @@ kern_return_t mach_write32(uintptr_t addr, uint32_t bytes) {
     fprintf(stderr, "mach_write32 failed: %s\n", mach_error_string(kr));
   }
 
+  return KERN_SUCCESS;
+}
+
+// aslr stuff
+kern_return_t mach_get_aslr_slide(mach_vm_address_t *out_slide) {
+  task_dyld_info_data_t dyld_info;
+  mach_msg_type_number_t count = TASK_DYLD_INFO_COUNT;
+
+  kern_return_t kr =
+      task_info(target_task, TASK_DYLD_INFO, (task_info_t)&dyld_info, &count);
+  if (kr != KERN_SUCCESS) {
+    fprintf(stderr, "mach_get_aslr_slide: task_info failed: %s\n",
+            mach_error_string(kr));
+    return kr;
+  }
+
+  // read the dyld_all_image_infos structure from target process
+  struct dyld_all_image_infos image_infos;
+  mach_vm_size_t size = sizeof(image_infos);
+
+  kr = vm_read_overwrite(target_task, dyld_info.all_image_info_addr, size,
+                         (mach_vm_address_t)&image_infos, (vm_size_t *)&size);
+  if (kr != KERN_SUCCESS) {
+    fprintf(stderr, "mach_get_aslr_slide: mach_vm_read failed: %s\n",
+            mach_error_string(kr));
+    return kr;
+  }
+
+  if (image_infos.infoArrayCount > 0) {
+    // find make excutable
+    struct dyld_image_info main_image;
+    mach_vm_size_t size = sizeof(main_image);
+
+    kr =
+        vm_read_overwrite(target_task, (mach_vm_address_t)image_infos.infoArray,
+                          size, (mach_vm_address_t)&main_image, (vm_address_t *)&size);
+    if (kr == KERN_SUCCESS) {
+      *out_slide = (mach_vm_address_t)main_image.imageLoadAddress - 0x100000000ULL;
+    }
+  }
+
+  return KERN_SUCCESS;
+}
+
+kern_return_t mach_set_auto_slide_enabled(bool enabled) {
+  if (!enabled) {
+    // disable auto aslr slide
+    slide = (mach_vm_address_t)0;
+    slide_enabled = enabled;
+    return KERN_SUCCESS;
+  }
+
+  kern_return_t kr = mach_get_aslr_slide(&slide);
+  if (kr != KERN_SUCCESS) {
+    fprintf(stderr,
+            "mach_set_auto_slide_enabled: mach_get_aslr_slide: failed: %s\n",
+            mach_error_string(kr));
+    return KERN_FAILURE;
+  }
+
+  slide_enabled = enabled;
+
+  return KERN_SUCCESS;
+}
+
+kern_return_t mach_set_slide_value(mach_vm_address_t new_slide) {
+  slide = new_slide;
+  if (!slide_enabled)
+    slide_enabled = !slide_enabled;
   return KERN_SUCCESS;
 }

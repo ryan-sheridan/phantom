@@ -136,7 +136,7 @@ int read32(uintptr_t addr) {
 }
 
 int write64(uintptr_t addr, uint64_t bytes) {
-  kern_return_t  kr = mach_write64(addr, bytes);
+  kern_return_t kr = mach_write64(addr, bytes);
   if (kr != KERN_SUCCESS) {
     fprintf(stderr, "[-] mach_write64 failed: %s (0x%x)\n",
             mach_error_string(kr), kr);
@@ -159,6 +159,41 @@ int write32(uintptr_t addr, uint32_t bytes) {
 
   // hexdump final changes
   read32(addr);
+
+  return 0;
+}
+
+bool slide_enabled = false;
+
+int toggle_slide(void) {
+  kern_return_t kr = mach_set_auto_slide_enabled(!slide_enabled);
+
+  if (kr != KERN_SUCCESS) {
+    fprintf(stderr, "[-] mach_set_auto_slide_enabled failed: %s (0x%x)\n",
+            mach_error_string(kr), kr);
+    return 1;
+  }
+
+  const char* str_slide_enabled = (slide_enabled == true) ? "true" : "false";
+
+  printf("[+] aslr slide enabled: %s\n", str_slide_enabled);
+
+  return 0;
+}
+
+mach_vm_address_t slide = (mach_vm_address_t)0;
+
+int print_slide(void) {
+  mach_vm_address_t slide;
+  kern_return_t kr = mach_get_aslr_slide(&slide);
+
+  if (kr != KERN_SUCCESS) {
+    fprintf(stderr, "[-] mach_get_aslr_slide failed: %s (0x%x)\n",
+            mach_error_string(kr), kr);
+    return 1;
+  }
+
+  printf("[i] aslr slide: 0x%" PRIx64 "\n", (uint64_t)slide);
 
   return 0;
 }
