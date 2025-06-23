@@ -1,6 +1,6 @@
 # phantom
 
-`phantom` is a lightweight debugger for macOS. It allows you to attach to running processes, inspect their state (registers), and control their execution (resume, suspend, detach). It's built using Mach APIs for process control and exception handling.  It also supports setting breakpoints to pause execution at specific addresses.
+`phantom` is a lightweight debugger for macOS. It allows you to attach to running processes, inspect their state (registers), control their execution (resume, suspend, detach), and read/write process memory. It's built using Mach APIs for process control and exception handling. It also supports setting breakpoints to pause execution at specific addresses. Furthermore, phantom can read and write memory and handle ASLR slides.
 
 ## Usage
 
@@ -13,7 +13,13 @@
     *   `detach`: Detach from the process.
     *   `reg read`: Read register values.
     *   `reg write <reg> <value>`: Write to a register.
-    *   `br`: list, set or delete a breakpoint by address or index syntax: br set <address> | br delete <address|index> | br list
+    *   `br`: list, set or delete a breakpoint by address or index syntax: `br set <address>` | `br delete <address|index>` | `br list`
+    *   `r64 <address>`: Read 64 bits from memory at the given address.
+    *   `w64 <address> <value>`: Write a 64-bit value to memory at the given address.
+    *   `r32 <address>`: Read 32 bits from memory at the given address.
+    *   `w32 <address> <value>`: Write a 32-bit value to memory at the given address.
+    *   `slide`: Print the ASLR slide value.
+    *   `autoslide`: Toggle automatic ASLR slide calculation.
     *   `q`: Exit.
 
 ## Key Files
