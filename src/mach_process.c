@@ -314,6 +314,9 @@ int mach_set_breakpoint(int index, uint64_t addr) {
 
 // read helper
 kern_return_t mach_read(uintptr_t addr, void *out, size_t size) {
+  if(slide)
+    addr = addr + slide;
+
   if (out == NULL) {
     return KERN_INVALID_ARGUMENT;
   }
@@ -340,6 +343,9 @@ kern_return_t mach_read(uintptr_t addr, void *out, size_t size) {
 
 // write helper
 kern_return_t mach_write(uintptr_t addr, void *bytes, size_t size) {
+  if(slide)
+    addr = addr + slide;
+
   kern_return_t kr =
       vm_write(target_task, (vm_address_t)addr, (vm_offset_t)bytes, size);
 

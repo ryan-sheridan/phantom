@@ -315,6 +315,18 @@ int cmd_slide(int argc, char **argv) {
   return 0;
 }
 
+int cmd_autoslide(int argc, char **argv) {
+  (void)argc;
+  (void)argv;
+
+  if(require_attached())
+    return 1;
+
+  toggle_slide();
+
+  return 0;
+}
+
 // array of builtin commands, each entry has a
 // - name - word that you type
 // - func - the function to call
@@ -340,6 +352,7 @@ const builtin_cmd_t builtins[] = {
     {"w32", cmd_w32, "write 32 bits to an address in memory\n\tsyntax: w32 [addr] [bytes]"},
 
     {"slide", cmd_slide, "print the aslr slide of the attached process"},
+    {"autoslide", cmd_autoslide, "enable auto ASLR slide calculation on r/w to target task"},
 
     {"q", cmd_exit, "exits the program"},
 
