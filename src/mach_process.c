@@ -7,6 +7,7 @@
 #include <pthread.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #ifndef ARM_DEBUG_REG_MAX
 #define ARM_DEBUG_REG_MAX 16
@@ -314,7 +315,7 @@ int mach_set_breakpoint(int index, uint64_t addr) {
 
 // read helper
 kern_return_t mach_read(uintptr_t addr, void *out, size_t size) {
-  if(slide)
+  if (slide)
     addr = addr + slide;
 
   if (out == NULL) {
@@ -341,13 +342,160 @@ kern_return_t mach_read(uintptr_t addr, void *out, size_t size) {
   return KERN_SUCCESS;
 }
 
+typedef struct {
+  uintptr_t aligned_addr;
+  size_t aligned_size;
+} Page;
+
+static Page _get_aligned_page(mach_vm_address_t addr, size_t size) {
+  Page p;
+
+  uintptr_t page_size = getpagesize();
+  p.aligned_addr = ((uintptr_t)addr) & ~(page_size - 1);
+  p.aligned_size = ((size + page_size - 1) / page_size) * page_size;
+
+  return p;
+}
+
+static void _print_protections(vm_prot_t protections) {
+  fprintf(stderr, "Protections: ");
+  if (protections & VM_PROT_READ) {
+    fprintf(stderr, "r");
+  } else {
+    fprintf(stderr, "-");
+  }
+  if (protections & VM_PROT_WRITE) {
+    fprintf(stderr, "w");
+  } else {
+    fprintf(stderr, "-");
+  }
+  if (protections & VM_PROT_EXECUTE) {
+    fprintf(stderr, "x");
+  } else {
+    fprintf(stderr, "-");
+  }
+  fprintf(stderr, "\n");
+}
+
+static kern_return_t _mach_get_region_protections(mach_vm_address_t addr,
+                                                  mach_vm_size_t size,
+                                                  vm_prot_t *protections) {
+  kern_return_t kr;
+  mach_vm_size_t region_size;
+  mach_vm_address_t region_addr = addr;
+  vm_region_flavor_t flavor = VM_REGION_BASIC_INFO_64;
+  vm_region_basic_info_data_64_t info;
+  mach_msg_type_number_t info_count = VM_REGION_BASIC_INFO_COUNT_64;
+  mach_port_t object_name;
+
+  kr = vm_region_64(target_task, (vm_address_t *)&region_addr,
+                    (vm_address_t *)&region_size, flavor,
+                    (vm_region_info_t)&info, &info_count, &object_name);
+
+  if (kr != KERN_SUCCESS) {
+    fprintf(stderr, "_mach_get_region_protections: vm_region: failed: %s\n",
+            mach_error_string(kr));
+    return KERN_FAILURE;
+  }
+
+  *protections = info.protection;
+
+  fprintf(stderr, "[i] Region 0x%lx - 0x%lx (size: 0x%lx) has ", region_addr,
+          region_addr + region_size, region_size);
+  _print_protections(*protections);
+
+  if (object_name != MACH_PORT_NULL) {
+    mach_port_deallocate(mach_task_self(), object_name);
+  }
+
+  return KERN_SUCCESS;
+}
+
+// this is needed as we cannot just write anywhere in memory, for example
+// in the future if we want to add software breakpoints, we need read and write
+// access to the __TEXT segment, the __TEXT segment in a MachO binary holds
+// instructions that the cpu can execute, the protections for this reason
+// as i believe currently, are set to r/x, we cannot write to this segment
+// as we will get an KERN_INVALID_ADDRESS if we call vm_write in this segment
+//
+// the steps are as follow
+// - see the protections of the page we are writing to
+// _mach_get_region_protections->vm_region
+// - if current_protections == new_protections throw a KERN_SUCCESS obv ..
+// - we cant just protect individual bytes or arbitrary ranges in memory, we
+// need to protect entire pages
+//   so using the address we want to write to, we find the base address of the
+//   page this piece of memory is in
+// - then we do a vm_protect with our new_protections
+static kern_return_t _mach_set_region_protections(mach_vm_address_t addr,
+                                                  mach_vm_size_t size,
+                                                  vm_prot_t new_protections) {
+
+  kern_return_t kr;
+  vm_prot_t current_protections;
+  kr = _mach_get_region_protections(addr, size, &current_protections);
+  if (kr != KERN_SUCCESS) {
+    fprintf(stderr,
+            "_mach_set_region_proections: _mach_get_region_protections: "
+            "failed: %s\n",
+            mach_error_string(kr));
+    return KERN_FAILURE;
+  }
+
+  if (current_protections == new_protections) {
+    return KERN_SUCCESS;
+  }
+
+  //  new_protections = current_protections | new_protections;
+
+  Page p = _get_aligned_page(addr, size);
+
+  fprintf(stderr, "[i] Region 0x%lx - 0x%lx (size: 0x%lx) has ", p.aligned_addr,
+          p.aligned_addr + p.aligned_size, p.aligned_size);
+  _print_protections(new_protections);
+
+
+  kr = vm_protect(target_task, p.aligned_addr, p.aligned_size, FALSE,
+                  new_protections);
+
+  if (kr != KERN_SUCCESS) {
+    fprintf(stderr, "_mach_set_region_protections: vm_protect failed: %s\n",
+            mach_error_string(kr));
+    return KERN_FAILURE;
+  }
+
+  return KERN_SUCCESS;
+}
+
+static kern_return_t _mach_set_region_writeable(mach_vm_address_t addr,
+                                                mach_vm_size_t size) {
+  kern_return_t kr = _mach_set_region_protections(addr, size, VM_PROT_WRITE | VM_PROT_READ);
+
+  if (kr != KERN_SUCCESS) {
+    fprintf(
+        stderr,
+        "mach_set_region_writeable: _mach_set_region_protections failed: %s\n",
+        mach_error_string(kr));
+    return KERN_FAILURE;
+  }
+
+  return KERN_SUCCESS;
+}
+
 // write helper
 kern_return_t mach_write(uintptr_t addr, void *bytes, size_t size) {
-  if(slide)
+  kern_return_t kr;
+
+  if (slide)
     addr = addr + slide;
 
-  kern_return_t kr =
-      vm_write(target_task, (vm_address_t)addr, (vm_offset_t)bytes, size);
+  kr = _mach_set_region_writeable(addr, size);
+  if (kr != KERN_SUCCESS) {
+    fprintf(stderr, "mach_write: _mach_set_region_writeable failed: %s\n",
+            mach_error_string(kr));
+  }
+
+  kr = vm_write(target_task, (vm_address_t)addr, (vm_offset_t)bytes, size);
 
   if (kr != KERN_SUCCESS) {
     fprintf(stderr, "mach_write: vm_write failed: %s\n", mach_error_string(kr));
@@ -414,11 +562,12 @@ kern_return_t mach_get_aslr_slide(mach_vm_address_t *out_slide) {
     struct dyld_image_info main_image;
     mach_vm_size_t size = sizeof(main_image);
 
-    kr =
-        vm_read_overwrite(target_task, (mach_vm_address_t)image_infos.infoArray,
-                          size, (mach_vm_address_t)&main_image, (vm_address_t *)&size);
+    kr = vm_read_overwrite(
+        target_task, (mach_vm_address_t)image_infos.infoArray, size,
+        (mach_vm_address_t)&main_image, (vm_address_t *)&size);
     if (kr == KERN_SUCCESS) {
-      *out_slide = (mach_vm_address_t)main_image.imageLoadAddress - 0x100000000ULL;
+      *out_slide =
+          (mach_vm_address_t)main_image.imageLoadAddress - 0x100000000ULL;
     }
   }
 
