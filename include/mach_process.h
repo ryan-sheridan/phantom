@@ -27,6 +27,7 @@ kern_return_t mach_register_print(void);
 kern_return_t mach_register_write(const char reg[], uint64_t value);
 kern_return_t mach_register_debug_print(void);
 kern_return_t mach_set_breakpoint(int index, uint64_t addr);
+kern_return_t mach_remove_breakpoint(int idx);
 
 // vmrw - reads or writes 64 or 32 bytes to whatever address we want
 // TODO: test r/w on __TEXT segment, iirc this errors out, but can be fixed with permissions?

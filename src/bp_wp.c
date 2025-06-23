@@ -69,6 +69,13 @@ int remove_breakpoint_at_index(size_t idx) {
     breakpoints[j - 1].index = (int)(j - 1);
   }
   bp_count--;
+
+  kern_return_t kr = mach_remove_breakpoint((int)idx);
+  if(kr != KERN_SUCCESS) {
+    printf("removing breakpoint failed\n");
+    return -1;
+  }
+
   return 0;
 }
 

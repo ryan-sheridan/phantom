@@ -21,6 +21,9 @@ static exception_mask_t old_masks[EXC_TYPES_COUNT];
 static exception_behavior_t old_behaviors[EXC_TYPES_COUNT];
 static thread_state_flavor_t old_flavors[EXC_TYPES_COUNT];
 
+// for restoring after vm_write
+static vm_prot_t old_protections = 0;
+
 // target task handle
 // - the task port for the attached task
 static task_t target_task;
@@ -286,6 +289,9 @@ kern_return_t mach_register_write(const char reg[], uint64_t value) {
 
 // to set hardware breakpoint across all threads
 int mach_set_breakpoint(int index, uint64_t addr) {
+  if (slide_enabled)
+    addr = addr + slide;
+
   ThreadList tl = _get_thread_list(target_task);
   // some weird thing got to do with privledges
   const uint64_t ENABLE = (1ULL << 0);
@@ -310,6 +316,25 @@ int mach_set_breakpoint(int index, uint64_t addr) {
 
   printf("Requested breakpoint %d at 0x%016" PRIx64 " on %u threads\n", index,
          addr, tl.count);
+  return KERN_SUCCESS;
+}
+
+kern_return_t mach_remove_breakpoint(int idx) {
+  ThreadList tl = _get_thread_list(target_task);
+  uint64_t bcr_value = 0;
+
+  for (mach_msg_type_number_t i = 0; i < tl.count; i++) {
+    arm_debug_state64_t dbg;
+    if (_get_thread_debug_state64(tl.threads[i], &dbg) != KERN_SUCCESS)
+      continue;
+    dbg.__bvr[idx] = 0x0000000000000000ULL;
+    dbg.__bcr[idx] = 0x0000000000000000ULL;
+    _set_thread_debug_state64(tl.threads[i], &dbg);
+  }
+
+  vm_deallocate(mach_task_self(), (vm_address_t)tl.threads,
+                tl.count * sizeof(thread_t));
+
   return KERN_SUCCESS;
 }
 
@@ -400,10 +425,6 @@ static kern_return_t _mach_get_region_protections(mach_vm_address_t addr,
 
   *protections = info.protection;
 
-  fprintf(stderr, "[i] Region 0x%lx - 0x%lx (size: 0x%lx) has ", region_addr,
-          region_addr + region_size, region_size);
-  _print_protections(*protections);
-
   if (object_name != MACH_PORT_NULL) {
     mach_port_deallocate(mach_task_self(), object_name);
   }
@@ -442,18 +463,17 @@ static kern_return_t _mach_set_region_protections(mach_vm_address_t addr,
     return KERN_FAILURE;
   }
 
+  old_protections = current_protections;
+
   if (current_protections == new_protections) {
     return KERN_SUCCESS;
   }
-
-  //  new_protections = current_protections | new_protections;
 
   Page p = _get_aligned_page(addr, size);
 
   fprintf(stderr, "[i] Region 0x%lx - 0x%lx (size: 0x%lx) has ", p.aligned_addr,
           p.aligned_addr + p.aligned_size, p.aligned_size);
   _print_protections(new_protections);
-
 
   kr = vm_protect(target_task, p.aligned_addr, p.aligned_size, FALSE,
                   new_protections);
@@ -469,13 +489,27 @@ static kern_return_t _mach_set_region_protections(mach_vm_address_t addr,
 
 static kern_return_t _mach_set_region_writeable(mach_vm_address_t addr,
                                                 mach_vm_size_t size) {
-  kern_return_t kr = _mach_set_region_protections(addr, size, VM_PROT_WRITE | VM_PROT_READ);
+  kern_return_t kr = _mach_set_region_protections(
+      addr, size, VM_PROT_WRITE | VM_PROT_READ | VM_PROT_COPY);
 
   if (kr != KERN_SUCCESS) {
     fprintf(
         stderr,
         "mach_set_region_writeable: _mach_set_region_protections failed: %s\n",
         mach_error_string(kr));
+    return KERN_FAILURE;
+  }
+
+  return KERN_SUCCESS;
+}
+
+static kern_return_t _mach_restore_region(mach_vm_address_t addr,
+                                          mach_vm_size_t size) {
+  kern_return_t kr = _mach_set_region_protections(addr, size, old_protections);
+  if (kr != KERN_SUCCESS) {
+    fprintf(stderr,
+            "mach_restore_region: _mach_set_region_protections failed: %s\n",
+            mach_error_string(kr));
     return KERN_FAILURE;
   }
 
@@ -493,12 +527,20 @@ kern_return_t mach_write(uintptr_t addr, void *bytes, size_t size) {
   if (kr != KERN_SUCCESS) {
     fprintf(stderr, "mach_write: _mach_set_region_writeable failed: %s\n",
             mach_error_string(kr));
+    return kr;
   }
 
   kr = vm_write(target_task, (vm_address_t)addr, (vm_offset_t)bytes, size);
-
   if (kr != KERN_SUCCESS) {
     fprintf(stderr, "mach_write: vm_write failed: %s\n", mach_error_string(kr));
+    return kr;
+  }
+
+  kr = _mach_restore_region(addr, size);
+  if (kr != KERN_SUCCESS) {
+    fprintf(stderr, "mach_write: _mach_restore_region failed: %s\n",
+            mach_error_string(kr));
+    return kr;
   }
 
   return KERN_SUCCESS;
