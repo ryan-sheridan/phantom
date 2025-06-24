@@ -1,6 +1,6 @@
-#include "shell.h"
-#include "bp_wp.h"
-#include "debugger.h"
+#include "interface/shell.h"
+#include "dbg/bp_wp.h"
+#include "dbg/debugger.h"
 #include <ctype.h>
 #include <inttypes.h>
 #include <stdio.h>
@@ -327,6 +327,15 @@ int cmd_autoslide(int argc, char **argv) {
   return 0;
 }
 
+int cmd_step(int argc, char **argv) {
+  (void)argc;
+  (void)argv;
+
+  step();
+
+  return 0;
+}
+
 // array of builtin commands, each entry has a
 // - name - word that you type
 // - func - the function to call
@@ -348,6 +357,7 @@ const builtin_cmd_t builtins[] = {
     {"wp", cmd_wp,
      "list, set or delete a watchpoint by address or index\n\t"
      "syntax: wp set <address> | wp delete <address|index> | wp list"},
+    {"step", cmd_step, "steps to next instruction"},
 
     {"r64", cmd_r64, "read 64 bits from an address in memory\n\tsyntax: r64 [addr]"},
     {"w64", cmd_w64, "write 64 bits to an address in memory\n\tsyntax: w64 [addr] [bytes]"},

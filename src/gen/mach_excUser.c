@@ -5,7 +5,7 @@
  */
 #define	__MIG_check__Reply__mach_exc_subsystem__ 1
 
-#include "mach_exc.h"
+#include "gen/mach_exc.h"
 
 /* TODO: #include <mach/mach.h> */
 #ifdef __cplusplus

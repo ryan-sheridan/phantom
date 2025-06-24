@@ -2,7 +2,7 @@
 
 # Compiler and flags
 CC       = gcc
-CFLAGS = -std=gnu11 -Iinclude -D_DARWIN_C_SOURCE \
+CFLAGS = -std=gnu11 -Iinclude -D_DARWIN_C_SOURCE -DDEV \
          -Wall -Wextra -Wstrict-prototypes -O2 -pthread
 
 # Info.plist and section flags
@@ -10,7 +10,7 @@ PLIST    = Info.plist
 SECTFLAG = -Wl,-sectcreate,__TEXT,__info_plist,$(PLIST)
 
 # Sources and targets
-SRCS     := main.c $(wildcard src/*.c)
+SRCS     := main.c $(wildcard src/*/*.c)
 OBJS     = $(SRCS:.c=.o)
 TARGET   = phantom
 

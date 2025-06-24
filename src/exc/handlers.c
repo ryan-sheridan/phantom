@@ -1,6 +1,6 @@
-#include "mach_exc.h"
-#include "mach_process.h"
-#include "shell.h"
+#include "gen/mach_exc.h"
+#include "mach/mach_process.h"
+#include "interface/shell.h"
 #include <_stdio.h>
 #include <mach/exc.h>
 #include <mach/exception_types.h>
@@ -52,6 +52,7 @@ kern_return_t catch_mach_exception_raise(mach_port_t exception_port,
   printf("\n[!] Caught exception %s on thread 0x%x, code=0x%llx\n",
          exception_name(exception), thread, code[0]);
   mach_suspend();
+  mach_register_exception_print();
   print_prompt();
   return KERN_SUCCESS;
 }

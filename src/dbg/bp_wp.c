@@ -1,9 +1,9 @@
-#include "bp_wp.h"
+#include "dbg/bp_wp.h"
 #include <mach/kern_return.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <inttypes.h>
-#include "mach_process.h"
+#include "mach/mach_process.h"
 
 static int ensure_capacity(size_t min_capacity) {
   if(bp_capacity >= min_capacity) {

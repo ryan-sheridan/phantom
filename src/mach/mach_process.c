@@ -1,8 +1,10 @@
-#include "mach_process.h"
-#include "exception_listener.h"
+#include "mach/mach_process.h"
+#include "exc/exception_listener.h"
 #include <inttypes.h>
 #include <mach-o/dyld_images.h>
+#include <mach/arm/thread_status.h>
 #include <mach/kern_return.h>
+#include <mach/mach_types.h>
 #include <mach/vm_map.h>
 #include <pthread.h>
 #include <stdint.h>
@@ -83,8 +85,23 @@ static kern_return_t _get_thread_debug_state64(thread_act_t thread,
   kern_return_t kr =
       thread_get_state(thread, ARM_DEBUG_STATE64, (thread_state_t)out, &count);
   if (kr != KERN_SUCCESS) {
-    fprintf(stderr, "thread_get_debug_state(thread 0x%x) failed: %s\n", thread,
-            mach_error_string(kr));
+    fprintf(stderr, "_get_thread_debug_state64(thread 0x%x) failed: %s\n",
+            thread, mach_error_string(kr));
+  }
+  return kr;
+}
+
+static kern_return_t
+_get_thread_exception_state64(thread_act_t thread,
+                              arm_exception_state64_t *out) {
+
+  mach_msg_type_number_t count = ARM_EXCEPTION_STATE64_COUNT;
+  *out = (arm_exception_state64_t){0};
+  kern_return_t kr = thread_get_state(thread, ARM_EXCEPTION_STATE64,
+                                      (thread_state_t)out, &count);
+  if (kr != KERN_SUCCESS) {
+    fprintf(stderr, "_get_thread_exception_state64(thread 0x%x) failed: %s\n",
+            thread, mach_error_string(kr));
   }
   return kr;
 }
@@ -213,6 +230,27 @@ kern_return_t mach_register_debug_print(void) {
       printf("WVR[%u]=0x%016llx WCR[%u]=0x%016llx\n", j, dbg.__wvr[j], j,
              dbg.__wcr[j]);
     }
+
+    printf("mdscr_el1: 0x%016llx\n", dbg.__mdscr_el1);
+    printf("\n");
+  }
+  vm_deallocate(mach_task_self(), (vm_address_t)tl.threads,
+                tl.count * sizeof(thread_t));
+  return KERN_SUCCESS;
+}
+
+kern_return_t mach_register_exception_print(void) {
+  ThreadList tl = _get_thread_list(target_task);
+  for (mach_msg_type_number_t i = 0; i < tl.count; ++i) {
+    arm_exception_state64_t exc;
+    if (_get_thread_exception_state64(tl.threads[i], &exc) != KERN_SUCCESS)
+      continue;
+
+    printf("=== THREAD %u EXCEPTION REGISTERS ===\n", i);
+    printf("far: 0x%016llx\n", exc.__far);
+    printf("esr: 0x%08" PRIx32 "\n", exc.__esr);
+    printf("exception: 0x%08" PRIx32 "\n", exc.__exception);
+
     printf("\n");
   }
   vm_deallocate(mach_task_self(), (vm_address_t)tl.threads,
@@ -288,11 +326,17 @@ kern_return_t mach_register_write(const char reg[], uint64_t value) {
 }
 
 // to set hardware breakpoint across all threads
-int mach_set_breakpoint(int index, uint64_t addr) {
+kern_return_t mach_set_breakpoint(int index, uint64_t addr) {
   if (slide_enabled)
     addr = addr + slide;
 
   ThreadList tl = _get_thread_list(target_task);
+
+  if (tl.count == 0 || tl.threads == NULL)
+    return KERN_FAILURE;
+
+  bool did_step = false;
+
   // some weird thing got to do with privledges
   const uint64_t ENABLE = (1ULL << 0);
   const uint64_t PRIV_USR_ONLY = (1ULL << 3) | (1ULL << 2);
@@ -307,7 +351,9 @@ int mach_set_breakpoint(int index, uint64_t addr) {
       continue;
     dbg.__bvr[index] = addr;
     dbg.__bcr[index] = bcr_value;
-    _set_thread_debug_state64(tl.threads[i], &dbg);
+    if (_set_thread_debug_state64(tl.threads[i], &dbg) != KERN_SUCCESS) {
+      did_step = true;
+    }
   }
 
   // safety
@@ -316,12 +362,44 @@ int mach_set_breakpoint(int index, uint64_t addr) {
 
   printf("Requested breakpoint %d at 0x%016" PRIx64 " on %u threads\n", index,
          addr, tl.count);
-  return KERN_SUCCESS;
+
+  return did_step ? KERN_SUCCESS : KERN_FAILURE;
+}
+
+kern_return_t mach_step(void) {
+  ThreadList tl = _get_thread_list(target_task);
+
+  if (tl.count == 0 || tl.threads == NULL)
+    return KERN_FAILURE;
+
+  bool did_step = false;
+
+  for (mach_msg_type_number_t i = 0; i < tl.count; i++) {
+    arm_debug_state64_t dbg;
+
+    if (_get_thread_debug_state64(tl.threads[i], &dbg) != KERN_SUCCESS)
+      continue;
+    // set single step bit to 1
+    dbg.__mdscr_el1 |= (1ULL << 0);
+
+    if (_set_thread_debug_state64(tl.threads[i], &dbg) != KERN_SUCCESS) {
+      did_step = true;
+    }
+  }
+
+  vm_deallocate(mach_task_self(), (vm_address_t)tl.threads,
+                tl.count * sizeof(thread_t));
+
+  return did_step ? KERN_SUCCESS : KERN_FAILURE;
 }
 
 kern_return_t mach_remove_breakpoint(int idx) {
   ThreadList tl = _get_thread_list(target_task);
-  uint64_t bcr_value = 0;
+
+  if (tl.count == 0 || tl.threads == NULL)
+    return KERN_FAILURE;
+
+  bool did_step = false;
 
   for (mach_msg_type_number_t i = 0; i < tl.count; i++) {
     arm_debug_state64_t dbg;
@@ -329,13 +407,16 @@ kern_return_t mach_remove_breakpoint(int idx) {
       continue;
     dbg.__bvr[idx] = 0x0000000000000000ULL;
     dbg.__bcr[idx] = 0x0000000000000000ULL;
-    _set_thread_debug_state64(tl.threads[i], &dbg);
+
+    if (_set_thread_debug_state64(tl.threads[i], &dbg) != KERN_SUCCESS) {
+      did_step = true;
+    }
   }
 
   vm_deallocate(mach_task_self(), (vm_address_t)tl.threads,
                 tl.count * sizeof(thread_t));
 
-  return KERN_SUCCESS;
+  return did_step ? KERN_SUCCESS : KERN_FAILURE;
 }
 
 // read helper
@@ -403,7 +484,6 @@ static void _print_protections(vm_prot_t protections) {
 }
 
 static kern_return_t _mach_get_region_protections(mach_vm_address_t addr,
-                                                  mach_vm_size_t size,
                                                   vm_prot_t *protections) {
   kern_return_t kr;
   mach_vm_size_t region_size;
@@ -454,7 +534,7 @@ static kern_return_t _mach_set_region_protections(mach_vm_address_t addr,
 
   kern_return_t kr;
   vm_prot_t current_protections;
-  kr = _mach_get_region_protections(addr, size, &current_protections);
+  kr = _mach_get_region_protections(addr, &current_protections);
   if (kr != KERN_SUCCESS) {
     fprintf(stderr,
             "_mach_set_region_proections: _mach_get_region_protections: "

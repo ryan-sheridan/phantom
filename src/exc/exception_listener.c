@@ -1,10 +1,10 @@
-#include "exception_listener.h"
-#include "mach_exc.h"
+#include "exc/exception_listener.h"
+#include "gen/mach_exc.h"
 #include <mach/mach_error.h>
 #include <mach/message.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "shell.h"
+#include "interface/shell.h"
 
 extern kern_return_t mach_exc_server(mach_msg_header_t *InHeadP,
                                      mach_msg_header_t *OutHeadP);

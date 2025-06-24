@@ -1,5 +1,5 @@
-#include "debugger.h"
-#include "mach_process.h"
+#include "dbg/debugger.h"
+#include "mach/mach_process.h"
 #include <inttypes.h>
 #include <mach/kern_return.h>
 #include <stdio.h>
@@ -195,5 +195,17 @@ int print_slide(void) {
 
   printf("[i] aslr slide: 0x%" PRIx64 "\n", (uint64_t)slide);
 
+  return 0;
+}
+
+int step(void) {
+  kern_return_t kr = mach_step();
+  if(kr != KERN_SUCCESS) {
+    fprintf(stderr, "[-] mach_get_aslr_slide failed: %s (0x%x)\n",
+            mach_error_string(kr), kr);
+    return 1;
+  }
+
+  printf("mdscr_el1 ss bit set successfully\n");
   return 0;
 }
