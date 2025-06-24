@@ -3,6 +3,7 @@
 #include "dbg/debugger.h"
 #include <ctype.h>
 #include <inttypes.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -328,10 +329,32 @@ int cmd_autoslide(int argc, char **argv) {
 }
 
 int cmd_step(int argc, char **argv) {
+  if(require_attached())
+    return 1;
+
   (void)argc;
   (void)argv;
 
   step();
+
+  return 0;
+}
+
+int cmd_disasm(int argc, char **argv) {
+  if(require_attached())
+    return 1;
+
+  uintptr_t addr;
+
+  if(argc < 2) {
+    printf("Usage: disasm <bytes>\n");
+    return 1;
+  }
+
+  addr = pc();
+  uint64_t bytes = strtoull(argv[1], NULL, 0);
+
+  disasm(addr, bytes);
 
   return 0;
 }
@@ -366,6 +389,8 @@ const builtin_cmd_t builtins[] = {
 
     {"slide", cmd_slide, "print the aslr slide of the attached process"},
     {"autoslide", cmd_autoslide, "enable auto ASLR slide calculation on r/w to target task"},
+
+    {"disasm", cmd_disasm, "disassemble from the current pc\n\tsyntax: disasm [bytes]"},
 
     {"q", cmd_exit, "exits the program"},
 

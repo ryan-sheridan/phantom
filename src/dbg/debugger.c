@@ -1,5 +1,6 @@
 #include "dbg/debugger.h"
 #include "mach/mach_process.h"
+#include <capstone/capstone.h>
 #include <inttypes.h>
 #include <mach/kern_return.h>
 #include <stdio.h>
@@ -107,6 +108,18 @@ static void _hex_dump(const void *data, size_t size) {
   }
 }
 
+static int _read(uintptr_t addr, void *out, size_t size) {
+  // round down to the nearest 4byte boundary
+  uintptr_t aligned_addr = addr & ~(uintptr_t)(0x3);
+  kern_return_t kr = mach_read(aligned_addr, out, size, false);
+  if (kr != KERN_SUCCESS) {
+    fprintf(stderr, "[-] mach_read failed: %s (0x%x)\n", mach_error_string(kr),
+            kr);
+    return 1;
+  }
+  return 0;
+}
+
 int read64(uintptr_t addr) {
   uint64_t out;
   kern_return_t kr = mach_read64(addr, &out);
@@ -174,7 +187,7 @@ int toggle_slide(void) {
     return 1;
   }
 
-  const char* str_slide_enabled = (slide_enabled == true) ? "true" : "false";
+  const char *str_slide_enabled = (slide_enabled == true) ? "true" : "false";
 
   printf("[+] aslr slide enabled: %s\n", str_slide_enabled);
 
@@ -200,12 +213,77 @@ int print_slide(void) {
 
 int step(void) {
   kern_return_t kr = mach_step();
-  if(kr != KERN_SUCCESS) {
-    fprintf(stderr, "[-] mach_get_aslr_slide failed: %s (0x%x)\n",
+  if (kr != KERN_SUCCESS) {
+    fprintf(stderr, "[-] mach_step failed: %s (0x%x)\n",
             mach_error_string(kr), kr);
     return 1;
   }
-
-  printf("mdscr_el1 ss bit set successfully\n");
+  resume();
   return 0;
+}
+
+int disasm(uintptr_t addr, size_t size) {
+  csh handle;
+  cs_insn *insn = NULL;
+  void *code = NULL;
+  int ret = 1;
+
+  // init capstone
+  cs_err err = cs_open(CS_ARCH_ARM64, CS_MODE_ARM, &handle);
+  if (err != CS_ERR_OK) {
+    fprintf(stderr, "capstone error: %s\n", cs_strerror(err));
+    return 1;
+  }
+
+  // allocate some memory for our code/bytes
+  code = malloc(size);
+  if (code == NULL) {
+    fprintf(stderr, "Error: Failed to allocate %zu bytes for code buffer.\n",
+            size);
+    goto cleanup_capstone;
+  }
+
+  // read it
+  if (_read(addr, code, size) != 0) {
+    fprintf(stderr,
+            "disasm: _read: failed to read memory at 0x%" PRIxPTR
+            " (size %zu)\n",
+            addr, size);
+    goto cleanup_code_buffer;
+  }
+
+  // disasm
+  size_t count = cs_disasm(handle, code, size, addr, 0, &insn);
+  if (count > 0) {
+    // for each ins
+    for (size_t j = 0; j < count; j++) {
+      // print asm
+      printf("0x%" PRIx64 ":\t%s\t\t%s\n", insn[j].address, insn[j].mnemonic,
+             insn[j].op_str);
+    }
+    cs_free(insn, count);
+    ret = 0;
+  } else {
+    cs_err err = cs_errno(handle);
+    fprintf(stderr,
+            "ERROR: Failed to disassemble given code at 0x%" PRIxPTR
+            ". Capstone error: %s\n",
+            addr, cs_strerror(err));
+  }
+
+cleanup_code_buffer:
+  free(code);
+cleanup_capstone:
+  cs_close(&handle);
+  return ret;
+}
+
+uintptr_t pc(void) {
+  uintptr_t pc;
+  kern_return_t kr = mach_get_pc(&pc);
+  if (kr != KERN_SUCCESS) {
+    fprintf(stderr, "pc: mach_get_pc\n");
+    return 1;
+  }
+  return pc;
 }

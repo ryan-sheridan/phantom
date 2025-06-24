@@ -33,6 +33,8 @@ kern_return_t mach_register_exception_print(void);
 
 // vmrw - reads or writes 64 or 32 bytes to whatever address we want
 // TODO: test r/w on __TEXT segment, iirc this errors out, but can be fixed with permissions?
+kern_return_t mach_read(uintptr_t addr, void *out, size_t size, bool aslr);
+
 kern_return_t mach_read64(uintptr_t addr, uint64_t *out);
 kern_return_t mach_read32(uintptr_t addr, uint32_t *out);
 
@@ -49,5 +51,8 @@ kern_return_t mach_set_auto_slide_enabled(bool enabled);
 kern_return_t mach_set_slide_value(mach_vm_address_t slide);
 // returns the aslr slide into &out_slide
 kern_return_t mach_get_aslr_slide(mach_vm_address_t *out_slide);
+
+// utils
+kern_return_t mach_get_pc(uintptr_t *pc);
 
 #endif

@@ -212,6 +212,16 @@ kern_return_t mach_detach(void) {
   return KERN_SUCCESS;
 }
 
+kern_return_t mach_get_pc(uintptr_t *pc) {
+  ThreadList tl = _get_thread_list(target_task);
+  arm_thread_state64_t state64;
+  if (_get_thread_state64(tl.threads[0], &state64) != KERN_SUCCESS)
+    return 1;
+
+  *pc = state64.__pc;
+  return KERN_SUCCESS;
+}
+
 // print the debug registers for the first thread
 // CHORE: decide if we need this
 kern_return_t mach_register_debug_print(void) {
@@ -351,7 +361,7 @@ kern_return_t mach_set_breakpoint(int index, uint64_t addr) {
       continue;
     dbg.__bvr[index] = addr;
     dbg.__bcr[index] = bcr_value;
-    if (_set_thread_debug_state64(tl.threads[i], &dbg) != KERN_SUCCESS) {
+    if (_set_thread_debug_state64(tl.threads[i], &dbg) == KERN_SUCCESS) {
       did_step = true;
     }
   }
@@ -369,8 +379,9 @@ kern_return_t mach_set_breakpoint(int index, uint64_t addr) {
 kern_return_t mach_step(void) {
   ThreadList tl = _get_thread_list(target_task);
 
-  if (tl.count == 0 || tl.threads == NULL)
+  if (tl.count == 0 || tl.threads == NULL) {
     return KERN_FAILURE;
+  }
 
   bool did_step = false;
 
@@ -382,7 +393,7 @@ kern_return_t mach_step(void) {
     // set single step bit to 1
     dbg.__mdscr_el1 |= (1ULL << 0);
 
-    if (_set_thread_debug_state64(tl.threads[i], &dbg) != KERN_SUCCESS) {
+    if (_set_thread_debug_state64(tl.threads[i], &dbg) == KERN_SUCCESS) {
       did_step = true;
     }
   }
@@ -403,12 +414,12 @@ kern_return_t mach_remove_breakpoint(int idx) {
 
   for (mach_msg_type_number_t i = 0; i < tl.count; i++) {
     arm_debug_state64_t dbg;
-    if (_get_thread_debug_state64(tl.threads[i], &dbg) != KERN_SUCCESS)
+    if (_get_thread_debug_state64(tl.threads[i], &dbg) == KERN_SUCCESS)
       continue;
     dbg.__bvr[idx] = 0x0000000000000000ULL;
     dbg.__bcr[idx] = 0x0000000000000000ULL;
 
-    if (_set_thread_debug_state64(tl.threads[i], &dbg) != KERN_SUCCESS) {
+    if (_set_thread_debug_state64(tl.threads[i], &dbg) == KERN_SUCCESS) {
       did_step = true;
     }
   }
@@ -420,8 +431,8 @@ kern_return_t mach_remove_breakpoint(int idx) {
 }
 
 // read helper
-kern_return_t mach_read(uintptr_t addr, void *out, size_t size) {
-  if (slide)
+kern_return_t mach_read(uintptr_t addr, void *out, size_t size, bool aslr) {
+  if (slide & aslr)
     addr = addr + slide;
 
   if (out == NULL) {
@@ -627,11 +638,11 @@ kern_return_t mach_write(uintptr_t addr, void *bytes, size_t size) {
 }
 
 kern_return_t mach_read64(uintptr_t addr, uint64_t *out) {
-  return mach_read(addr, out, sizeof(*out));
+  return mach_read(addr, out, sizeof(*out), true);
 }
 
 kern_return_t mach_read32(uintptr_t addr, uint32_t *out) {
-  return mach_read(addr, out, sizeof(*out));
+  return mach_read(addr, out, sizeof(*out), true);
 }
 
 kern_return_t mach_write64(uintptr_t addr, uint64_t bytes) {

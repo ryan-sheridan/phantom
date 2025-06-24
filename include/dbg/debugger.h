@@ -18,6 +18,7 @@ int print_registers(void);
 int write_registers(const char reg[], uint64_t value);
 int set_breakpoint(uint64_t addr);
 int step(void);
+int disasm(uintptr_t addr, size_t size);
 
 int print_debug_registers(void);
 
@@ -32,5 +33,8 @@ int write32(uintptr_t addr, uint32_t bytes);
 // - this will toggle if we are using the aslr slide when we r/w to memory
 int toggle_slide(void);
 int print_slide(void);
+
+// utils
+uintptr_t pc(void);
 
 #endif

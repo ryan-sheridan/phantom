@@ -1,3 +1,4 @@
+#include "dbg/debugger.h"
 #include "gen/mach_exc.h"
 #include "mach/mach_process.h"
 #include "interface/shell.h"
@@ -52,7 +53,8 @@ kern_return_t catch_mach_exception_raise(mach_port_t exception_port,
   printf("\n[!] Caught exception %s on thread 0x%x, code=0x%llx\n",
          exception_name(exception), thread, code[0]);
   mach_suspend();
-  mach_register_exception_print();
+  //  mach_register_exception_print();
+  disasm(pc(), 0x16);
   print_prompt();
   return KERN_SUCCESS;
 }
