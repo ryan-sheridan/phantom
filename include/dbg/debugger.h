@@ -29,6 +29,10 @@ int read32(uintptr_t addr);
 int write64(uintptr_t addr, uint64_t bytes);
 int write32(uintptr_t addr, uint32_t bytes);
 
+// arbitrary r/w
+int read_arb(uintptr_t addr, size_t size);
+int write_arb(uintptr_t addr, void *bytes, size_t size);
+
 // aslr
 // - this will toggle if we are using the aslr slide when we r/w to memory
 int toggle_slide(void);

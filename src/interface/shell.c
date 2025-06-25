@@ -276,6 +276,49 @@ static int cmd_dp(int argc, char **argv) {
   return 1;
 }
 
+static int cmd_read(int argc, char **argv) {
+  if(require_attached())
+    return 1;
+
+  if(argc < 3) {
+    printf("Usage: read <addr> <size>\n");
+    return 1;
+  }
+
+  uintptr_t addr = strtoull(argv[1], NULL, 0);
+  size_t size = strtoull(argv[2], NULL, 0);
+
+  read_arb(addr, size);
+
+  return 0;
+}
+
+static int cmd_write(int argc, char **argv) {
+  if(require_attached())
+    return 1;
+
+  if(argc < 3) {
+    printf("Usage: write <addr> <bytes>\n");
+    return 1;
+  }
+
+  uintptr_t addr = strtoull(argv[1], NULL, 0);
+  uint64_t bytes = strtoull(argv[2], NULL, 0);
+  size_t size = 0;
+
+  uint64_t temp = bytes;
+  while(temp) {
+    size++;
+    temp>>=8;
+  }
+
+  if(size == 0) size = 1;
+
+  write_arb(addr, &bytes, size);
+
+  return 0;
+}
+
 // TODO: you know what todo pal
 static int cmd_r64(int argc, char **argv) {
   if (require_attached())
@@ -419,6 +462,10 @@ const builtin_cmd_t builtins[] = {
      "syntax: watchpoint set <address> | watchpoint delete <address|index> | "
      "watchpoint list"},
     {"step", cmd_step, "Step into the next machine instruction"},
+
+
+    {"read", cmd_read, "Dump an arbitrary amount of memory to console\n\tsyntax: read <addr> <size>"},
+    {"write", cmd_write, "Write an airbitrary amount of memory to task\n\tsyntax: write <addr> <bytes>"},
 
     {"read64", cmd_r64,
      "Read 64 bits from memory at a specified address\n\tsyntax: memory read64 "

@@ -108,7 +108,7 @@ static void _hex_dump(const void *data, size_t size) {
   }
 }
 
-static int _read(uintptr_t addr, void *out, size_t size) {
+static int _read_code(uintptr_t addr, void *out, size_t size) {
   // round down to the nearest 4byte boundary
   uintptr_t aligned_addr = addr & ~(uintptr_t)(0x3);
   kern_return_t kr = mach_read(aligned_addr, out, size, false);
@@ -118,6 +118,39 @@ static int _read(uintptr_t addr, void *out, size_t size) {
   }
   return 0;
 }
+
+int read_arb(uintptr_t addr, size_t size) {
+  void *out = NULL;
+  out = malloc(size);
+  if(out == NULL) {
+    LOG_ERR_FORCE("allocation error in read\n");
+    return 1;
+  }
+
+  kern_return_t kr = mach_read(addr, out, size, false);
+  if (kr != KERN_SUCCESS) {
+    LOG_ERR_FORCE("mach_read failed: %s (0x%x)\n", mach_error_string(kr), kr);
+    return 1;
+  }
+
+  _hex_dump(out, size);
+
+  return 0;
+}
+
+int write_arb(uintptr_t addr, void *bytes, size_t size) {
+  kern_return_t kr = mach_write(addr, bytes, size);
+  if(kr != KERN_SUCCESS) {
+    LOG_ERR_FORCE("mach_write failed: %s (0x%x)\n", mach_error_string(kr), kr);
+    return 1;
+  }
+
+  if(!read_arb(addr, size))
+    return 1;
+
+  return 0;
+}
+
 
 int read64(uintptr_t addr) {
   uint64_t out;
@@ -237,8 +270,8 @@ int disasm(uintptr_t addr, size_t size) {
   }
 
   // read it
-  if (_read(addr, code, size) != 0) {
-    LOG_ERR("disasm: _read: failed to read memory at 0x%" PRIxPTR
+  if (_read_code(addr, code, size) != 0) {
+    LOG_ERR("disasm: _read_code: failed to read memory at 0x%" PRIxPTR
             " (size %zu)\n",
             addr, size);
     goto cleanup_code_buffer;
@@ -258,8 +291,8 @@ int disasm(uintptr_t addr, size_t size) {
   } else {
     cs_err err = cs_errno(handle);
     LOG_ERR_FORCE("ERROR: Failed to disassemble given code at 0x%" PRIxPTR
-            ". Capstone error: %s\n",
-            addr, cs_strerror(err));
+                  ". Capstone error: %s\n",
+                  addr, cs_strerror(err));
   }
 
 cleanup_code_buffer:
