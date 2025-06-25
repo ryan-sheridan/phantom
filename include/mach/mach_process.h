@@ -10,7 +10,6 @@
 #include <mach/message.h>
 #include <pthread.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <sys/types.h>
 #include <stdbool.h>
 
@@ -23,12 +22,14 @@ kern_return_t setup_exception_port(pid_t pid);
 kern_return_t mach_resume(void);
 kern_return_t mach_suspend(void);
 kern_return_t mach_detach(void);
-kern_return_t mach_register_print(void);
 kern_return_t mach_register_write(const char reg[], uint64_t value);
-kern_return_t mach_register_debug_print(void);
 kern_return_t mach_set_breakpoint(int index, uint64_t addr);
 kern_return_t mach_remove_breakpoint(int idx);
 kern_return_t mach_step(void);
+
+// to remove
+kern_return_t mach_register_print(void);
+kern_return_t mach_register_debug_print(void);
 kern_return_t mach_register_exception_print(void);
 
 // vmrw - reads or writes 64 or 32 bytes to whatever address we want

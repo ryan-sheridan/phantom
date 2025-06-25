@@ -112,7 +112,7 @@ static int cmd_attach(int argc, char **argv) {
       return 1;
     }
     char cmd[256];
-    snprintf(cmd, sizeof(cmd), "/usr/bin/pgrep -n %s", arg);
+    snprintf(cmd, sizeof(cmd), "/usr/bin/pgrep -x %s", arg);
     FILE *fp = popen(cmd, "r");
     if (!fp) {
       perror("pgrep");
@@ -363,45 +363,46 @@ int cmd_disasm(int argc, char **argv) {
 // - name - word that you type
 // - func - the function to call
 const builtin_cmd_t builtins[] = {
-    {"help", cmd_help, "shows the help page"},
+    {"help", cmd_help, "Show this help page with available commands"},
 
-    {"attach", cmd_attach, "attach to a process by pid or name"},
-    {"suspend", cmd_interrupt, "suspend attached process execution"},
-    {"c", cmd_continue, "continue attached process execution"},
-    {"detach", cmd_detach, "detach from attached process"},
+    {"attach", cmd_attach, "Attach to a process by PID or name"},
+    {"suspend", cmd_interrupt, "Suspend execution of the attached process"},
+    {"continue", cmd_continue, "Resume execution of the attached process"},
+    {"detach", cmd_detach, "Detach from the currently attached process"},
 
-    {"reg", cmd_reg,
-     "read or write to registers\n\tsyntax: reg [read|write] <reg> [value]"},
-    {"regdbg", cmd_reg_dbg, "read debug registers"},
+    {"register", cmd_reg,
+     "Read from or write to general-purpose registers\n\tsyntax: register [read|write] <reg> [value]"},
+    {"register debug", cmd_reg_dbg, "Read values from debug registers"},
 
-    {"br", cmd_br,
-     "list, set or delete a breakpoint by address or index\n\t"
-     "syntax: br set <address> | br delete <address|index> | br list"},
-    {"wp", cmd_wp,
-     "list, set or delete a watchpoint by address or index\n\t"
-     "syntax: wp set <address> | wp delete <address|index> | wp list"},
-    {"step", cmd_step, "steps to next instruction"},
+    {"breakpoint", cmd_br,
+     "Manage breakpoints by address or index\n\t"
+     "syntax: breakpoint set <address> | breakpoint delete <address|index> | breakpoint list"},
+    {"watchpoint", cmd_wp,
+     "Manage watchpoints by address or index\n\t"
+     "syntax: watchpoint set <address> | watchpoint delete <address|index> | watchpoint list"},
+    {"thread step-instruction", cmd_step, "Step into the next machine instruction"},
 
-    {"r64", cmd_r64, "read 64 bits from an address in memory\n\tsyntax: r64 [addr]"},
-    {"w64", cmd_w64, "write 64 bits to an address in memory\n\tsyntax: w64 [addr] [bytes]"},
-    {"r32", cmd_r32, "read 32 bits from an address in memory\n\tsyntax: r32 [addr]"},
-    {"w32", cmd_w32, "write 32 bits to an address in memory\n\tsyntax: w32 [addr] [bytes]"},
+    {"read64", cmd_r64, "Read 64 bits from memory at a specified address\n\tsyntax: memory read64 <address>"},
+    {"write64", cmd_w64, "Write 64 bits to memory at a specified address\n\tsyntax: memory write64 <address> <bytes>"},
+    {"read32", cmd_r32, "Read 32 bits from memory at a specified address\n\tsyntax: memory read32 <address>"},
+    {"write32", cmd_w32, "Write 32 bits to memory at a specified address\n\tsyntax: memory write32 <address> <bytes>"},
 
-    {"slide", cmd_slide, "print the aslr slide of the attached process"},
-    {"autoslide", cmd_autoslide, "enable auto ASLR slide calculation on r/w to target task"},
+    {"slide", cmd_slide, "Print the ASLR slide of the attached process"},
+    {"autoslide", cmd_autoslide, "Enable automatic ASLR slide calculation on memory read/write"},
 
-    {"disasm", cmd_disasm, "disassemble from the current pc\n\tsyntax: disasm [bytes]"},
+    {"disassemble", cmd_disasm, "Disassemble from the current program counter\n\tsyntax: disassemble [bytes]"},
 
-    {"q", cmd_exit, "exits the program"},
+    {"quit", cmd_exit, "Exit the debugger"},
 
-    {NULL, NULL, NULL}};
+    {NULL, NULL, NULL}
+};
 
 // dispatch or signal not found
 static int dispatch_builtin(int argc, char **argv) {
   if (argc == 0)
     return -1;
   for (const builtin_cmd_t *b = builtins; b->name; ++b) {
-    if (strcmp(argv[0], b->name) == 0) {
+    if(strncmp(b->name, argv[0], strlen(argv[0])) == 0) {
       return b->func(argc, argv);
     }
   }
