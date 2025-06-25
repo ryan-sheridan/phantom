@@ -342,8 +342,12 @@ kern_return_t mach_register_write(const char reg[], uint64_t value) {
   return KERN_SUCCESS;
 }
 
-// to set hardware breakpoint across all threads
-kern_return_t mach_set_breakpoint(int index, uint64_t addr) {
+typedef struct {
+  enum { BREAKPOINT, WATCHPOINT } type;
+  char *name;
+} dbg_point;
+
+kern_return_t _mach_set_point(int index, uint64_t addr, dbg_point dp) {
   if (slide_enabled)
     addr = addr + slide;
 
@@ -366,8 +370,17 @@ kern_return_t mach_set_breakpoint(int index, uint64_t addr) {
     arm_debug_state64_t dbg;
     if (_get_thread_debug_state64(tl.threads[i], &dbg) != KERN_SUCCESS)
       continue;
-    dbg.__bvr[index] = addr;
-    dbg.__bcr[index] = bcr_value;
+
+    if (dp.type == BREAKPOINT) {
+      dbg.__bvr[index] = addr;
+      dbg.__bcr[index] = bcr_value;
+    }
+
+    if (dp.type == WATCHPOINT) {
+      dbg.__wvr[index] = addr;
+      dbg.__wcr[index] = bcr_value;
+    }
+
     if (_set_thread_debug_state64(tl.threads[i], &dbg) == KERN_SUCCESS) {
       did_step = true;
     }
@@ -377,14 +390,25 @@ kern_return_t mach_set_breakpoint(int index, uint64_t addr) {
   vm_deallocate(mach_task_self(), (vm_address_t)tl.threads,
                 tl.count * sizeof(thread_t));
 
-  printf("Requested breakpoint %d at 0x%016" PRIx64 " on %u threads\n", index,
+  printf("Requested %s %d at 0x%016" PRIx64 " on %u threads\n", dp.name, index,
          addr, tl.count);
 
   return did_step ? KERN_SUCCESS : KERN_FAILURE;
 }
 
+// to set hardware breakpoint across all threads
+kern_return_t mach_set_breakpoint(int index, uint64_t addr) {
+  dbg_point dp;
+  dp.name = "BREAKPOINT";
+  dp.type = BREAKPOINT;
+  return _mach_set_point(index, addr, dp);
+}
+
 kern_return_t mach_set_watchpoint(int index, uint64_t addr) {
-  return KERN_SUCCESS;
+  dbg_point dp;
+  dp.name = "WATCHPOINT";
+  dp.type = WATCHPOINT;
+  return _mach_set_point(index, addr, dp);
 }
 
 kern_return_t mach_step(void) {
@@ -415,7 +439,7 @@ kern_return_t mach_step(void) {
   return did_step ? KERN_SUCCESS : KERN_FAILURE;
 }
 
-kern_return_t mach_remove_breakpoint(int idx) {
+kern_return_t _mach_remove_point(int idx, dbg_point dp) {
   ThreadList tl = _get_thread_list(target_task);
 
   if (tl.count == 0 || tl.threads == NULL)
@@ -427,8 +451,16 @@ kern_return_t mach_remove_breakpoint(int idx) {
     arm_debug_state64_t dbg;
     if (_get_thread_debug_state64(tl.threads[i], &dbg) != KERN_SUCCESS)
       continue;
-    dbg.__bvr[idx] = 0x0000000000000000ULL;
-    dbg.__bcr[idx] = 0x0000000000000000ULL;
+
+    if (dp.type == BREAKPOINT) {
+      dbg.__bvr[idx] = 0x0000000000000000ULL;
+      dbg.__bcr[idx] = 0x0000000000000000ULL;
+    }
+
+    if (dp.type == WATCHPOINT) {
+      dbg.__wvr[idx] = 0x0000000000000000ULL;
+      dbg.__wcr[idx] = 0x0000000000000000ULL;
+    }
 
     if (_set_thread_debug_state64(tl.threads[i], &dbg) == KERN_SUCCESS) {
       did_step = true;
@@ -441,8 +473,18 @@ kern_return_t mach_remove_breakpoint(int idx) {
   return did_step ? KERN_SUCCESS : KERN_FAILURE;
 }
 
+kern_return_t mach_remove_breakpoint(int idx) {
+  dbg_point dp;
+  dp.name = "BREAKPOINT";
+  dp.type = BREAKPOINT;
+  return _mach_remove_point(idx, dp);
+}
+
 kern_return_t mach_remove_watchpoint(int idx) {
-  return KERN_SUCCESS;
+  dbg_point dp;
+  dp.name = "WATCHPOINT";
+  dp.type = WATCHPOINT;
+  return _mach_remove_point(idx, dp);
 }
 
 // read helper

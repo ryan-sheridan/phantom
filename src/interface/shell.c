@@ -209,41 +209,74 @@ static int cmd_reg_dbg(int argc, char **argv) {
   return 0;
 }
 
-static int cmd_br(int argc, char **argv) {
+static int cmd_dp(int argc, char **argv) {
   if (require_attached())
     return 1;
   if (argc < 2) {
     printf("Usage: breakpoint set <address> | breakpoint delete <address> | "
            "breakpoint list\n");
+    printf("       watchpoint set <address> | watchpoint delete <address> | "
+           "watchpoint list\n");
     return 1;
   }
-  const char *arg = argv[1];
-  if (strcmp(arg, "list") == 0 && argc == 2) {
-    list_breakpoints();
+
+  const char *type = argv[0];
+
+  if (strcmp(type, "breakpoint") != 0 && strcmp(type, "watchpoint") != 0) {
+    printf("Usage: breakpoint set <address> | breakpoint delete <address> | "
+           "breakpoint list\n");
+    printf("       watchpoint set <address> | watchpoint delete <address> | "
+           "watchpoint list\n");
+    return 1;
+  }
+
+  const char *cmd = argv[1];
+
+  if (strcmp(cmd, "list") == 0 && argc == 2) {
+    // we should really have this exported from bp_wp to the debugger
+    // TODO: this will make modularisation cleaner
+    if (strcmp(type, "breakpoint") == 0) {
+      list_breakpoints();
+    } else {
+      list_watchpoints();
+    }
     return 0;
-  } else if (strcmp(arg, "set") == 0 && argc == 3) {
-    add_breakpoint(strtoull(argv[2], NULL, 0));
+  } else if (strcmp(cmd, "set") == 0 && argc == 3) {
+    if (strcmp(type, "breakpoint") == 0) {
+      add_breakpoint(strtoull(argv[2], NULL, 0));
+    } else {
+      add_watchpoint(strtoull(argv[2], NULL, 0));
+    }
     return 0;
-  } else if (strcmp(arg, "delete") == 0 && argc == 3) {
+  } else if (strcmp(cmd, "delete") == 0 && argc == 3) {
     const char *param = argv[2];
     if (strspn(param, "0123456789") == strlen(param)) {
-      remove_breakpoint_at_index(atoi(param));
+      if (strcmp(type, "breakpoint") == 0) {
+        remove_breakpoint_at_index(atoi(param));
+      } else {
+        remove_watchpoint_at_index(atoi(param));
+      }
     } else {
-      remove_breakpoint_by_addr(strtoull(param, NULL, 0));
+      if (strcmp(type, "breakpoint") == 0) {
+        remove_breakpoint_by_addr(strtoull(param, NULL, 0));
+      } else {
+        remove_watchpoint_by_addr(strtoull(param, NULL, 0));
+      }
     }
     return 0;
   }
-  printf("Usage: breakpoint set <address> | breakpoint delete <address> | "
-         "breakpoint list\n");
+
+  if (strcmp(type, "breakpoint") == 0) {
+    printf("Usage: breakpoint set <address> | breakpoint delete <address> | "
+           "breakpoint list\n");
+  } else {
+    printf("Usage: watchpoint set <address> | watchpoint delete <address> | "
+           "watchpoint list\n");
+  }
   return 1;
 }
 
-static int cmd_wp(int argc, char **argv) {
-  (void)argc;
-  (void)argv;
-  return 0;
-}
-
+// TODO: you know what todo pal
 static int cmd_r64(int argc, char **argv) {
   if (require_attached())
     return 1;
@@ -377,16 +410,15 @@ const builtin_cmd_t builtins[] = {
      "[read|write] <reg> [value]"},
     {"registerd", cmd_reg_dbg, "Read values from debug registers"},
 
-    {"breakpoint", cmd_br,
+    {"breakpoint", cmd_dp,
      "Manage breakpoints by address or index\n\t"
      "syntax: breakpoint set <address> | breakpoint delete <address|index> | "
      "breakpoint list"},
-    {"watchpoint", cmd_wp,
+    {"watchpoint", cmd_dp,
      "Manage watchpoints by address or index\n\t"
      "syntax: watchpoint set <address> | watchpoint delete <address|index> | "
      "watchpoint list"},
-    {"step", cmd_step,
-     "Step into the next machine instruction"},
+    {"step", cmd_step, "Step into the next machine instruction"},
 
     {"read64", cmd_r64,
      "Read 64 bits from memory at a specified address\n\tsyntax: memory read64 "
