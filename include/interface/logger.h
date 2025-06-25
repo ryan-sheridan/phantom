@@ -2,11 +2,14 @@
 #define LOGGER_H
 
 #include <stdio.h>
+#include <stdbool.h>
 
-#define LOG_ERR(...) fprintf(stderr, __VA_ARGS__)
-#define LOG_INFO(...) printf(stderr, "[i]" __VA_ARGS__)
-#define LOG_ACTION(...) printf(stderr, "[+]" __VA_ARGS__)
-#define LOG_FAILURE(...) printf(stderr, "[-]" __VA_ARGS__)
+extern bool verbose;
+
+#define LOG_INFO(...)    if (verbose) fprintf(stderr, "[i] " __VA_ARGS__)
+#define LOG_ACTION(...)  if (verbose) fprintf(stderr, "[+] " __VA_ARGS__)
+#define LOG_ERR(...)     if (verbose) fprintf(stderr, "[-] " __VA_ARGS__)
+#define LOG_ERR_FORCE(...)            fprintf(stderr, "[-] " __VA_ARGS__)
 
 #endif
 

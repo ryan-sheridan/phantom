@@ -181,20 +181,20 @@ static int cmd_reg(int argc, char **argv) {
   if (require_attached())
     return 1;
   if (argc < 2) {
-    printf("Usage: reg [read|write]\n");
+    printf("Usage: register [read|write]\n");
     return 1;
   }
   if (strcmp(argv[1], "read") == 0) {
     print_registers();
   } else if (strcmp(argv[1], "write") == 0) {
     if (argc != 4) {
-      printf(
-          "Usage: reg write takes exactly 2 arguments: <reg-name> <value>\n");
+      printf("Usage: register write takes exactly 2 arguments: <reg-name> "
+             "<value>\n");
       return 1;
     }
     write_registers(argv[2], strtoull(argv[3], NULL, 0));
   } else {
-    printf("Usage: reg [read|write]\n");
+    printf("Usage: register [read|write]\n");
     return 1;
   }
   return 0;
@@ -213,7 +213,8 @@ static int cmd_br(int argc, char **argv) {
   if (require_attached())
     return 1;
   if (argc < 2) {
-    printf("Usage: br set <address> | br delete <address> | br list\n");
+    printf("Usage: breakpoint set <address> | breakpoint delete <address> | "
+           "breakpoint list\n");
     return 1;
   }
   const char *arg = argv[1];
@@ -232,7 +233,8 @@ static int cmd_br(int argc, char **argv) {
     }
     return 0;
   }
-  printf("Usage: br set <address> | br delete <address> | br list\n");
+  printf("Usage: breakpoint set <address> | breakpoint delete <address> | "
+         "breakpoint list\n");
   return 1;
 }
 
@@ -247,7 +249,7 @@ static int cmd_r64(int argc, char **argv) {
     return 1;
 
   if (argc < 2) {
-    printf("Usage: r64 <addr>\n");
+    printf("Usage: read64 <addr>\n");
   }
 
   uint64_t addr = strtoull(argv[1], NULL, 0);
@@ -257,11 +259,11 @@ static int cmd_r64(int argc, char **argv) {
 }
 
 static int cmd_w64(int argc, char **argv) {
-  if(require_attached())
+  if (require_attached())
     return 1;
 
-  if(argc < 3) {
-    printf("Usage: w64 <addr> <bytes>");
+  if (argc < 3) {
+    printf("Usage: write64 <addr> <bytes>\n");
   }
 
   uint64_t addr = strtoull(argv[1], NULL, 0);
@@ -277,12 +279,12 @@ static int cmd_r32(int argc, char **argv) {
     return 1;
 
   if (argc < 2) {
-    printf("Usage: r32 <addr>\n");
+    printf("Usage: read32 <addr>\n");
     return 1;
   }
 
   uint64_t addr = strtoull(argv[1], NULL, 0);
-  read32(addr);  // Assumes you have a read32 function
+  read32(addr); // Assumes you have a read32 function
 
   return 0;
 }
@@ -292,14 +294,14 @@ static int cmd_w32(int argc, char **argv) {
     return 1;
 
   if (argc < 3) {
-    printf("Usage: w32 <addr> <bytes>\n");
+    printf("Usage: write32 <addr> <bytes>\n");
     return 1;
   }
 
   uint64_t addr = strtoull(argv[1], NULL, 0);
-  uint32_t bytes = strtoul(argv[2], NULL, 0);  // 32-bit version
+  uint32_t bytes = strtoul(argv[2], NULL, 0); // 32-bit version
 
-  write32(addr, bytes);  // Assumes you have a write32 function
+  write32(addr, bytes); // Assumes you have a write32 function
 
   return 0;
 }
@@ -308,7 +310,7 @@ int cmd_slide(int argc, char **argv) {
   (void)argc;
   (void)argv;
 
-  if(require_attached())
+  if (require_attached())
     return 1;
 
   print_slide();
@@ -320,7 +322,7 @@ int cmd_autoslide(int argc, char **argv) {
   (void)argc;
   (void)argv;
 
-  if(require_attached())
+  if (require_attached())
     return 1;
 
   toggle_slide();
@@ -329,7 +331,7 @@ int cmd_autoslide(int argc, char **argv) {
 }
 
 int cmd_step(int argc, char **argv) {
-  if(require_attached())
+  if (require_attached())
     return 1;
 
   (void)argc;
@@ -341,13 +343,13 @@ int cmd_step(int argc, char **argv) {
 }
 
 int cmd_disasm(int argc, char **argv) {
-  if(require_attached())
+  if (require_attached())
     return 1;
 
   uintptr_t addr;
 
-  if(argc < 2) {
-    printf("Usage: disasm <bytes>\n");
+  if (argc < 2) {
+    printf("Usage: disassemble <bytes>\n");
     return 1;
   }
 
@@ -371,38 +373,52 @@ const builtin_cmd_t builtins[] = {
     {"detach", cmd_detach, "Detach from the currently attached process"},
 
     {"register", cmd_reg,
-     "Read from or write to general-purpose registers\n\tsyntax: register [read|write] <reg> [value]"},
-    {"register debug", cmd_reg_dbg, "Read values from debug registers"},
+     "Read from or write to general-purpose registers\n\tsyntax: register "
+     "[read|write] <reg> [value]"},
+    {"registerd", cmd_reg_dbg, "Read values from debug registers"},
 
     {"breakpoint", cmd_br,
      "Manage breakpoints by address or index\n\t"
-     "syntax: breakpoint set <address> | breakpoint delete <address|index> | breakpoint list"},
+     "syntax: breakpoint set <address> | breakpoint delete <address|index> | "
+     "breakpoint list"},
     {"watchpoint", cmd_wp,
      "Manage watchpoints by address or index\n\t"
-     "syntax: watchpoint set <address> | watchpoint delete <address|index> | watchpoint list"},
-    {"thread step-instruction", cmd_step, "Step into the next machine instruction"},
+     "syntax: watchpoint set <address> | watchpoint delete <address|index> | "
+     "watchpoint list"},
+    {"step", cmd_step,
+     "Step into the next machine instruction"},
 
-    {"read64", cmd_r64, "Read 64 bits from memory at a specified address\n\tsyntax: memory read64 <address>"},
-    {"write64", cmd_w64, "Write 64 bits to memory at a specified address\n\tsyntax: memory write64 <address> <bytes>"},
-    {"read32", cmd_r32, "Read 32 bits from memory at a specified address\n\tsyntax: memory read32 <address>"},
-    {"write32", cmd_w32, "Write 32 bits to memory at a specified address\n\tsyntax: memory write32 <address> <bytes>"},
+    {"read64", cmd_r64,
+     "Read 64 bits from memory at a specified address\n\tsyntax: memory read64 "
+     "<address>"},
+    {"write64", cmd_w64,
+     "Write 64 bits to memory at a specified address\n\tsyntax: memory write64 "
+     "<address> <bytes>"},
+    {"read32", cmd_r32,
+     "Read 32 bits from memory at a specified address\n\tsyntax: memory read32 "
+     "<address>"},
+    {"write32", cmd_w32,
+     "Write 32 bits to memory at a specified address\n\tsyntax: memory write32 "
+     "<address> <bytes>"},
 
     {"slide", cmd_slide, "Print the ASLR slide of the attached process"},
-    {"autoslide", cmd_autoslide, "Enable automatic ASLR slide calculation on memory read/write"},
+    {"autoslide", cmd_autoslide,
+     "Enable automatic ASLR slide calculation on memory read/write"},
 
-    {"disassemble", cmd_disasm, "Disassemble from the current program counter\n\tsyntax: disassemble [bytes]"},
+    {"disassemble", cmd_disasm,
+     "Disassemble from the current program counter\n\tsyntax: disassemble "
+     "[bytes]"},
 
     {"quit", cmd_exit, "Exit the debugger"},
 
-    {NULL, NULL, NULL}
-};
+    {NULL, NULL, NULL}};
 
 // dispatch or signal not found
 static int dispatch_builtin(int argc, char **argv) {
   if (argc == 0)
     return -1;
   for (const builtin_cmd_t *b = builtins; b->name; ++b) {
-    if(strncmp(b->name, argv[0], strlen(argv[0])) == 0) {
+    if (strncmp(b->name, argv[0], strlen(argv[0])) == 0) {
       return b->func(argc, argv);
     }
   }

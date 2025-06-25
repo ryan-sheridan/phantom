@@ -58,7 +58,7 @@ static kern_return_t _get_thread_state64(thread_act_t thread,
       thread_get_state(thread, ARM_THREAD_STATE64, (thread_state_t)out, &count);
   if (kr != KERN_SUCCESS) {
     LOG_ERR("thread_get_state(thread 0x%x) failed: %s\n", thread,
-        mach_error_string(kr));
+            mach_error_string(kr));
   }
   return kr;
 }
@@ -72,7 +72,7 @@ static kern_return_t _set_thread_state64(thread_act_t thread,
       thread_set_state(thread, ARM_THREAD_STATE64, (thread_state_t)in, count);
   if (kr != KERN_SUCCESS) {
     LOG_ERR("thread_set_state(thread 0x%x) failed: %s\n", thread,
-        mach_error_string(kr));
+            mach_error_string(kr));
   }
   return kr;
 }
@@ -87,7 +87,7 @@ static kern_return_t _get_thread_debug_state64(thread_act_t thread,
       thread_get_state(thread, ARM_DEBUG_STATE64, (thread_state_t)out, &count);
   if (kr != KERN_SUCCESS) {
     LOG_ERR("_get_thread_debug_state64(thread 0x%x) failed: %s\n", thread,
-        mach_error_string(kr));
+            mach_error_string(kr));
   }
   return kr;
 }
@@ -102,7 +102,7 @@ _get_thread_exception_state64(thread_act_t thread,
                                       (thread_state_t)out, &count);
   if (kr != KERN_SUCCESS) {
     LOG_ERR("_get_thread_exception_state64(thread 0x%x) failed: %s\n", thread,
-        mach_error_string(kr));
+            mach_error_string(kr));
   }
   return kr;
 }
@@ -116,7 +116,7 @@ static kern_return_t _set_thread_debug_state64(thread_act_t thread,
       thread_set_state(thread, ARM_DEBUG_STATE64, (thread_state_t)in, count);
   if (kr != KERN_SUCCESS) {
     LOG_ERR("thread_set_debug_state(thread 0x%x) failed: %s\n", thread,
-        mach_error_string(kr));
+            mach_error_string(kr));
   }
   return kr;
 }
@@ -125,10 +125,10 @@ static kern_return_t _set_thread_debug_state64(thread_act_t thread,
 kern_return_t get_task_port(pid_t pid, task_t *task_out) {
   kern_return_t kr = task_for_pid(mach_task_self(), pid, task_out);
   if (kr != KERN_SUCCESS) {
-    LOG_ERR("[-] task_for_pid(%d) failed: %s (0x%x)\n", pid, mach_error_string(kr),
-        kr);
+    LOG_ERR("[-] task_for_pid(%d) failed: %s (0x%x)\n", pid,
+            mach_error_string(kr), kr);
   } else {
-    printf("[+] Got task port 0x%x for PID %d\n", *task_out, pid);
+    LOG_ACTION("Got task port 0x%x for PID %d\n", *task_out, pid);
   }
   return kr;
 }
@@ -137,14 +137,22 @@ kern_return_t get_task_port(pid_t pid, task_t *task_out) {
 kern_return_t mach_suspend(void) {
   kern_return_t kr = task_suspend(target_task);
   if (kr != KERN_SUCCESS) {
-    LOG_ERR("[-] task_suspend failed: %s (0x%x)\n", mach_error_string(kr), kr);
+    LOG_ERR("task_suspend failed: %s (0x%x)\n", mach_error_string(kr), kr);
     return kr;
   }
-  printf("[+] Task [%d] suspended\n", target_task);
+  LOG_ACTION("task [%d] suspended\n", target_task);
   return KERN_SUCCESS;
 }
 
-kern_return_t mach_resume(void) { return task_resume(target_task); }
+kern_return_t mach_resume(void) {
+  kern_return_t kr = task_resume(target_task);
+  if (kr != KERN_SUCCESS) {
+    LOG_ERR("task_suspend failed: %s (0x%x)\n", mach_error_string(kr), kr);
+    return kr;
+  }
+  LOG_ACTION("task [%d] resumed\n", target_task);
+  return kr;
+}
 
 // setup exception port
 kern_return_t setup_exception_port(pid_t pid) {
@@ -164,7 +172,7 @@ kern_return_t setup_exception_port(pid_t pid) {
   if (kr != KERN_SUCCESS) {
     saved_exc_count = count;
     LOG_ERR("[-] task_get_exception_ports failed: %s (0x%x)\n",
-        mach_error_string(kr), kr);
+            mach_error_string(kr), kr);
     return kr;
   }
 
@@ -190,7 +198,7 @@ kern_return_t setup_exception_port(pid_t pid) {
     LOG_ERR("[-] Failed to create exception_listener: %s\n", strerror(err));
     return err;
   }
-  printf("[+] exception listener thread started\n");
+  LOG_ACTION("exception listener thread started\n");
   pthread_detach(thr);
   return KERN_SUCCESS;
 }
@@ -375,6 +383,10 @@ kern_return_t mach_set_breakpoint(int index, uint64_t addr) {
   return did_step ? KERN_SUCCESS : KERN_FAILURE;
 }
 
+kern_return_t mach_set_watchpoint(int index, uint64_t addr) {
+  return KERN_SUCCESS;
+}
+
 kern_return_t mach_step(void) {
   ThreadList tl = _get_thread_list(target_task);
 
@@ -413,7 +425,7 @@ kern_return_t mach_remove_breakpoint(int idx) {
 
   for (mach_msg_type_number_t i = 0; i < tl.count; i++) {
     arm_debug_state64_t dbg;
-    if (_get_thread_debug_state64(tl.threads[i], &dbg) == KERN_SUCCESS)
+    if (_get_thread_debug_state64(tl.threads[i], &dbg) != KERN_SUCCESS)
       continue;
     dbg.__bvr[idx] = 0x0000000000000000ULL;
     dbg.__bcr[idx] = 0x0000000000000000ULL;
@@ -427,6 +439,10 @@ kern_return_t mach_remove_breakpoint(int idx) {
                 tl.count * sizeof(thread_t));
 
   return did_step ? KERN_SUCCESS : KERN_FAILURE;
+}
+
+kern_return_t mach_remove_watchpoint(int idx) {
+  return KERN_SUCCESS;
 }
 
 // read helper
@@ -450,7 +466,7 @@ kern_return_t mach_read(uintptr_t addr, void *out, size_t size, bool aslr) {
 
   if (bytes_read != size) {
     LOG_ERR("vm_read_overwrite read only %zu bytes instead of %zu\n",
-        (size_t)bytes_read, size);
+            (size_t)bytes_read, size);
     return KERN_FAILURE;
   }
 
@@ -508,7 +524,7 @@ static kern_return_t _mach_get_region_protections(mach_vm_address_t addr,
 
   if (kr != KERN_SUCCESS) {
     LOG_ERR("_mach_get_region_protections: vm_region: failed: %s\n",
-        mach_error_string(kr));
+            mach_error_string(kr));
     return KERN_FAILURE;
   }
 
@@ -545,7 +561,8 @@ static kern_return_t _mach_set_region_protections(mach_vm_address_t addr,
   vm_prot_t current_protections;
   kr = _mach_get_region_protections(addr, &current_protections);
   if (kr != KERN_SUCCESS) {
-    LOG_ERR("_mach_set_region_proections: _mach_get_region_protections: failed: "
+    LOG_ERR(
+        "_mach_set_region_proections: _mach_get_region_protections: failed: "
         "%s\n",
         mach_error_string(kr));
     return KERN_FAILURE;
@@ -560,7 +577,7 @@ static kern_return_t _mach_set_region_protections(mach_vm_address_t addr,
   Page p = _get_aligned_page(addr, size);
 
   LOG_ERR("[i] Region 0x%lx - 0x%lx (size: 0x%lx) has ", p.aligned_addr,
-      p.aligned_addr + p.aligned_size, p.aligned_size);
+          p.aligned_addr + p.aligned_size, p.aligned_size);
   _print_protections(new_protections);
 
   kr = vm_protect(target_task, p.aligned_addr, p.aligned_size, FALSE,
@@ -568,7 +585,7 @@ static kern_return_t _mach_set_region_protections(mach_vm_address_t addr,
 
   if (kr != KERN_SUCCESS) {
     LOG_ERR("_mach_set_region_protections: vm_protect failed: %s\n",
-        mach_error_string(kr));
+            mach_error_string(kr));
     return KERN_FAILURE;
   }
 
@@ -581,7 +598,8 @@ static kern_return_t _mach_set_region_writeable(mach_vm_address_t addr,
       addr, size, VM_PROT_WRITE | VM_PROT_READ | VM_PROT_COPY);
 
   if (kr != KERN_SUCCESS) {
-    LOG_ERR("mach_set_region_writeable: _mach_set_region_protections failed: %s\n",
+    LOG_ERR(
+        "mach_set_region_writeable: _mach_set_region_protections failed: %s\n",
         mach_error_string(kr));
     return KERN_FAILURE;
   }
@@ -594,7 +612,7 @@ static kern_return_t _mach_restore_region(mach_vm_address_t addr,
   kern_return_t kr = _mach_set_region_protections(addr, size, old_protections);
   if (kr != KERN_SUCCESS) {
     LOG_ERR("mach_restore_region: _mach_set_region_protections failed: %s\n",
-        mach_error_string(kr));
+            mach_error_string(kr));
     return KERN_FAILURE;
   }
 
@@ -611,7 +629,7 @@ kern_return_t mach_write(uintptr_t addr, void *bytes, size_t size) {
   kr = _mach_set_region_writeable(addr, size);
   if (kr != KERN_SUCCESS) {
     LOG_ERR("mach_write: _mach_set_region_writeable failed: %s\n",
-        mach_error_string(kr));
+            mach_error_string(kr));
     return kr;
   }
 
@@ -623,7 +641,8 @@ kern_return_t mach_write(uintptr_t addr, void *bytes, size_t size) {
 
   kr = _mach_restore_region(addr, size);
   if (kr != KERN_SUCCESS) {
-    LOG_ERR("mach_write: _mach_restore_region failed: %s\n", mach_error_string(kr));
+    LOG_ERR("mach_write: _mach_restore_region failed: %s\n",
+            mach_error_string(kr));
     return kr;
   }
 
@@ -666,7 +685,8 @@ kern_return_t mach_get_aslr_slide(mach_vm_address_t *out_slide) {
   kern_return_t kr =
       task_info(target_task, TASK_DYLD_INFO, (task_info_t)&dyld_info, &count);
   if (kr != KERN_SUCCESS) {
-    LOG_ERR("mach_get_aslr_slide: task_info failed: %s\n", mach_error_string(kr));
+    LOG_ERR("mach_get_aslr_slide: task_info failed: %s\n",
+            mach_error_string(kr));
     return kr;
   }
 
@@ -678,7 +698,7 @@ kern_return_t mach_get_aslr_slide(mach_vm_address_t *out_slide) {
                          (mach_vm_address_t)&image_infos, (vm_size_t *)&size);
   if (kr != KERN_SUCCESS) {
     LOG_ERR("mach_get_aslr_slide: mach_vm_read failed: %s\n",
-        mach_error_string(kr));
+            mach_error_string(kr));
     return kr;
   }
 
@@ -710,7 +730,7 @@ kern_return_t mach_set_auto_slide_enabled(bool enabled) {
   kern_return_t kr = mach_get_aslr_slide(&slide);
   if (kr != KERN_SUCCESS) {
     LOG_ERR("mach_set_auto_slide_enabled: mach_get_aslr_slide: failed: %s\n",
-        mach_error_string(kr));
+            mach_error_string(kr));
     return KERN_FAILURE;
   }
 

@@ -25,6 +25,8 @@ kern_return_t mach_detach(void);
 kern_return_t mach_register_write(const char reg[], uint64_t value);
 kern_return_t mach_set_breakpoint(int index, uint64_t addr);
 kern_return_t mach_remove_breakpoint(int idx);
+kern_return_t mach_set_watchpoint(int index, uint64_t addr);
+kern_return_t mach_remove_watchpoint(int idx);
 kern_return_t mach_step(void);
 
 // to remove

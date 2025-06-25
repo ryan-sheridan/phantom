@@ -9,7 +9,6 @@
 #define SHELL_H
 
 #include <ctype.h>
-#include <stdio.h>  // for printf, getline
 #include <stdlib.h> // for exit, atoi
 #include <string.h> // for strcmp, strtok
 #include <unistd.h>

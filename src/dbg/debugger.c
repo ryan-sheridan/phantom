@@ -1,4 +1,5 @@
 #include "dbg/debugger.h"
+#include "interface/logger.h"
 #include "mach/mach_process.h"
 #include <capstone/capstone.h>
 #include <inttypes.h>
@@ -8,11 +9,11 @@
 int attach(pid_t pid) {
   kern_return_t kr = setup_exception_port(pid);
   if (kr != KERN_SUCCESS) {
-    fprintf(stderr, "[-] setup_exception_port failed: %s (0x%x)\n",
-            mach_error_string(kr), kr);
+    LOG_ERR("setup_exception_port failed: %s (0x%x)\n", mach_error_string(kr),
+            kr);
     return 1;
   }
-  printf("[+] Exception port setup configured successfully for: %d\n", pid);
+  printf("exception port setup configured successfully for: %d\n", pid);
   attached_pid = pid;
   return pid;
 }
@@ -20,42 +21,41 @@ int attach(pid_t pid) {
 int resume(void) {
   kern_return_t kr = mach_resume();
   if (kr != KERN_SUCCESS) {
-    fprintf(stderr, "[-] task_resume failed: %s (0x%x)\n",
-            mach_error_string(kr), kr);
+    LOG_ERR("task_resume failed: %s (0x%x)\n", mach_error_string(kr), kr);
   }
 
-  printf("[+] task resumed successfully\n");
+  printf("task resumed successfully\n");
   return 0;
 }
 
 int interrupt(void) {
   kern_return_t kr = mach_suspend();
   if (kr != KERN_SUCCESS) {
-    fprintf(stderr, "[-] task_suspend failed: %s (0x%x)\n",
-            mach_error_string(kr), kr);
+    LOG_ERR("task_suspend failed: %s (0x%x)\n", mach_error_string(kr), kr);
     return 1;
   }
+
+  printf("task suspended successfully\n");
   return 0;
 }
 
 int detach(void) {
   kern_return_t kr = mach_detach();
   if (kr != KERN_SUCCESS) {
-    fprintf(stderr, "[-] mach_detach failed: %s (0x%x)\n",
-            mach_error_string(kr), kr);
+    LOG_ERR("mach_detach failed: %s (0x%x)\n", mach_error_string(kr), kr);
   } else {
-    printf("[+] mach exception port torn down\n");
+    printf("mach exception port torn down\n");
   }
 
-  printf("[+] detached from %d\n", attached_pid);
+  printf("detached from %d\n", attached_pid);
   return 0;
 }
 
 int print_registers(void) {
   kern_return_t kr = mach_register_print();
   if (kr != KERN_SUCCESS) {
-    fprintf(stderr, "[-] mach_register_read failed: %s (0x%x)\n",
-            mach_error_string(kr), kr);
+    LOG_ERR("mach_register_read failed: %s (0x%x)\n", mach_error_string(kr),
+            kr);
   }
   return 0;
 }
@@ -63,8 +63,8 @@ int print_registers(void) {
 int write_registers(const char reg[], uint64_t value) {
   kern_return_t kr = mach_register_write(reg, value);
   if (kr != KERN_SUCCESS) {
-    fprintf(stderr, "[-] mach_register_write failed: %s (0x%x)\n",
-            mach_error_string(kr), kr);
+    LOG_ERR("mach_register_write failed: %s (0x%x)\n", mach_error_string(kr),
+            kr);
   }
   return 0;
 }
@@ -72,7 +72,7 @@ int write_registers(const char reg[], uint64_t value) {
 int print_debug_registers(void) {
   kern_return_t kr = mach_register_debug_print();
   if (kr != KERN_SUCCESS) {
-    fprintf(stderr, "[-] mach_register_debug_read failed: %s (0x%x)\n",
+    LOG_ERR("mach_register_debug_read failed: %s (0x%x)\n",
             mach_error_string(kr), kr);
   }
   return 0;
@@ -113,8 +113,7 @@ static int _read(uintptr_t addr, void *out, size_t size) {
   uintptr_t aligned_addr = addr & ~(uintptr_t)(0x3);
   kern_return_t kr = mach_read(aligned_addr, out, size, false);
   if (kr != KERN_SUCCESS) {
-    fprintf(stderr, "[-] mach_read failed: %s (0x%x)\n", mach_error_string(kr),
-            kr);
+    LOG_ERR("mach_read failed: %s (0x%x)\n", mach_error_string(kr), kr);
     return 1;
   }
   return 0;
@@ -124,8 +123,7 @@ int read64(uintptr_t addr) {
   uint64_t out;
   kern_return_t kr = mach_read64(addr, &out);
   if (kr != KERN_SUCCESS) {
-    fprintf(stderr, "[-] mach_read64 failed: %s (0x%x)\n",
-            mach_error_string(kr), kr);
+    LOG_ERR("mach_read64 failed: %s (0x%x)\n", mach_error_string(kr), kr);
     return 1;
   }
 
@@ -138,8 +136,7 @@ int read32(uintptr_t addr) {
   uint32_t out;
   kern_return_t kr = mach_read32(addr, &out);
   if (kr != KERN_SUCCESS) {
-    fprintf(stderr, "[-] mach_read32 failed: %s (0x%x)\n",
-            mach_error_string(kr), kr);
+    LOG_ERR("mach_read32 failed: %s (0x%x)\n", mach_error_string(kr), kr);
     return 1;
   }
 
@@ -151,8 +148,7 @@ int read32(uintptr_t addr) {
 int write64(uintptr_t addr, uint64_t bytes) {
   kern_return_t kr = mach_write64(addr, bytes);
   if (kr != KERN_SUCCESS) {
-    fprintf(stderr, "[-] mach_write64 failed: %s (0x%x)\n",
-            mach_error_string(kr), kr);
+    LOG_ERR("mach_write64 failed: %s (0x%x)\n", mach_error_string(kr), kr);
     return 1;
   }
 
@@ -165,8 +161,7 @@ int write64(uintptr_t addr, uint64_t bytes) {
 int write32(uintptr_t addr, uint32_t bytes) {
   kern_return_t kr = mach_write32(addr, bytes);
   if (kr != KERN_SUCCESS) {
-    fprintf(stderr, "[-] mach_write32 failed: %s (0x%x)\n",
-            mach_error_string(kr), kr);
+    LOG_ERR("mach_write32 failed: %s (0x%x)\n", mach_error_string(kr), kr);
     return 1;
   }
 
@@ -182,14 +177,14 @@ int toggle_slide(void) {
   kern_return_t kr = mach_set_auto_slide_enabled(!slide_enabled);
 
   if (kr != KERN_SUCCESS) {
-    fprintf(stderr, "[-] mach_set_auto_slide_enabled failed: %s (0x%x)\n",
+    LOG_ERR("mach_set_auto_slide_enabled failed: %s (0x%x)\n",
             mach_error_string(kr), kr);
     return 1;
   }
 
   const char *str_slide_enabled = (slide_enabled == true) ? "true" : "false";
 
-  printf("[+] aslr slide enabled: %s\n", str_slide_enabled);
+  printf("aslr slide enabled: %s\n", str_slide_enabled);
 
   return 0;
 }
@@ -201,12 +196,12 @@ int print_slide(void) {
   kern_return_t kr = mach_get_aslr_slide(&slide);
 
   if (kr != KERN_SUCCESS) {
-    fprintf(stderr, "[-] mach_get_aslr_slide failed: %s (0x%x)\n",
-            mach_error_string(kr), kr);
+    LOG_ERR("mach_get_aslr_slide failed: %s (0x%x)\n", mach_error_string(kr),
+            kr);
     return 1;
   }
 
-  printf("[i] aslr slide: 0x%" PRIx64 "\n", (uint64_t)slide);
+  printf("aslr slide: 0x%" PRIx64 "\n", (uint64_t)slide);
 
   return 0;
 }
@@ -214,8 +209,7 @@ int print_slide(void) {
 int step(void) {
   kern_return_t kr = mach_step();
   if (kr != KERN_SUCCESS) {
-    fprintf(stderr, "[-] mach_step failed: %s (0x%x)\n",
-            mach_error_string(kr), kr);
+    LOG_ERR("mach_step failed: %s (0x%x)\n", mach_error_string(kr), kr);
     return 1;
   }
   resume();
@@ -231,22 +225,20 @@ int disasm(uintptr_t addr, size_t size) {
   // init capstone
   cs_err err = cs_open(CS_ARCH_ARM64, CS_MODE_ARM, &handle);
   if (err != CS_ERR_OK) {
-    fprintf(stderr, "capstone error: %s\n", cs_strerror(err));
+    LOG_ERR("capstone error: %s\n", cs_strerror(err));
     return 1;
   }
 
   // allocate some memory for our code/bytes
   code = malloc(size);
   if (code == NULL) {
-    fprintf(stderr, "Error: Failed to allocate %zu bytes for code buffer.\n",
-            size);
+    LOG_ERR("Error: Failed to allocate %zu bytes for code buffer.\n", size);
     goto cleanup_capstone;
   }
 
   // read it
   if (_read(addr, code, size) != 0) {
-    fprintf(stderr,
-            "disasm: _read: failed to read memory at 0x%" PRIxPTR
+    LOG_ERR("disasm: _read: failed to read memory at 0x%" PRIxPTR
             " (size %zu)\n",
             addr, size);
     goto cleanup_code_buffer;
@@ -265,8 +257,7 @@ int disasm(uintptr_t addr, size_t size) {
     ret = 0;
   } else {
     cs_err err = cs_errno(handle);
-    fprintf(stderr,
-            "ERROR: Failed to disassemble given code at 0x%" PRIxPTR
+    LOG_ERR_FORCE("ERROR: Failed to disassemble given code at 0x%" PRIxPTR
             ". Capstone error: %s\n",
             addr, cs_strerror(err));
   }
@@ -282,7 +273,7 @@ uintptr_t pc(void) {
   uintptr_t pc;
   kern_return_t kr = mach_get_pc(&pc);
   if (kr != KERN_SUCCESS) {
-    fprintf(stderr, "pc: mach_get_pc\n");
+    LOG_ERR("pc: mach_get_pc\n");
     return 1;
   }
   return pc;
