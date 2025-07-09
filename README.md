@@ -1,5 +1,8 @@
 # phantom
 
+> [!WARNING]  
+> this can break things.
+
 `phantom` is a lightweight debugger for macOS. It allows you to attach to running processes, inspect their state (registers), control their execution (resume, suspend, detach), and read/write process memory. It's built using Mach APIs for process control and exception handling. It also supports setting breakpoints to pause execution at specific addresses. Furthermore, phantom can read and write memory and handle ASLR slides.
 
 ## Usage
